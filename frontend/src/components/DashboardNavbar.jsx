@@ -68,7 +68,7 @@ const DashboardNavbar = () => {
         {/* Mobile/Tablet Header */}
         <div className='md:hidden bg-white shadow-[0_2px_6px_-2px_rgba(0,0,0,0.2)] p-2 flex justify-between items-center'>
             <img className='h-8' src="/printing_coopLogo2.png" alt="" />
-            <Menu size={28} className='cursor-pointer' />
+            <Menu size={28} strokeWidth={1.2} color='#6b6b6b' className='cursor-pointer' />
         </div>
 
         {/* Horizontal Scrollable Icons - Mobile/Tablet */}
