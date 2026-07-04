@@ -26,19 +26,19 @@ const ResetPassword = () => {
 
   const validateForm = () => {
     const newErrors = {}
-    
+
     if (!formData.password) {
       newErrors.password = 'Password is required'
     } else if (formData.password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters'
     }
-    
+
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password'
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match'
     }
-    
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -59,16 +59,15 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validateForm()) {
       return
     }
 
     setLoading(true)
-    
+
     try {
-      // Try customer (user) reset password first
-      const customerResponse = await fetch(`${BACKEND_URL}/api/user/reset-password`, {
+      const response = await fetch(`${BACKEND_URL}/api/wholesale-seller/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,9 +78,17 @@ const ResetPassword = () => {
         })
       })
 
-      const customerData = await customerResponse.json()
+      // Guard against non-JSON responses (e.g. a 404 HTML page) so we can
+      // surface a clear message instead of a JSON parse error.
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        toast.error('Unexpected server response. Please check the backend route.')
+        return
+      }
 
-      if (customerData.success) {
+      const data = await response.json()
+
+      if (data.success) {
         toast.success('Password reset successfully! Redirecting to login...')
         setTimeout(() => {
           navigate('/')
@@ -89,32 +96,9 @@ const ResetPassword = () => {
         return
       }
 
-      // If customer reset fails, try wholesale seller reset
-      const sellerResponse = await fetch(`${BACKEND_URL}/api/wholesale-seller/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token,
-          newPassword: formData.password
-        })
-      })
-
-      const sellerData = await sellerResponse.json()
-
-      if (sellerData.success) {
-        toast.success('Password reset successfully! Redirecting to login...')
-        setTimeout(() => {
-          navigate('/')
-        }, 1500)
-        return
-      }
-
-      // If both fail, check for error messages
-      const errorMessage = customerData.message || sellerData.message || 'Failed to reset password. Please try again.'
+      const errorMessage = data.message || 'Failed to reset password. Please try again.'
       toast.error(errorMessage)
-      
+
       if (errorMessage.includes('expired') || errorMessage.includes('Invalid')) {
         setIsTokenValid(false)
       }

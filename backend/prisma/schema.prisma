@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model WholesaleSeller {
+  id                   Int       @id @default(autoincrement())
+  name                 String
+  email                String    @unique
+  password             String
+  phoneNumber          String    @map("phone_number")
+  address              String
+  address2             String?
+  companyName          String    @map("company_name")
+  country              String
+  city                 String
+  state                String
+  zipcode              String
+  website              String?
+  resetPasswordToken   String?   @map("reset_password_token")
+  resetPasswordExpires DateTime? @map("reset_password_expires")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@map("wholesale_sellers")
+}
+
+model User {
+  id                   Int       @id @default(autoincrement())
+  name                 String
+  email                String    @unique
+  password             String
+  resetPasswordToken   String?   @map("reset_password_token")
+  resetPasswordExpires DateTime? @map("reset_password_expires")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@map("users")
+}

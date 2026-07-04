@@ -1,13 +1,9 @@
 import React from "react"
 import { Route, Routes } from "react-router-dom"
 import Home from "./pages/Home"
-import UserLogin from "./pages/UserLogin"
-import UserRegister from "./pages/UserRegister"
-import ForgotPassword from "./pages/ForgotPassword"
 import ResetPassword from "./pages/ResetPassword"
 import {Toaster} from "react-hot-toast"
 import ScrollToTop from "./components/ScrollToTop"
-import WholeSaleSellerRegister from "./pages/WholeSaleSellerRegister"
 import DashboardBanner from "./pages/DashboardBanner"
 import DashboardRigid from "./pages/DashboardRigid"
 import DashboardAdhesive from "./pages/DashboardAdhesive"
@@ -43,10 +39,6 @@ function App() {
       <Routes>
         <Route path="/" element={<Home/>}/>
         <Route path="/reset-password" element={<ResetPassword />}/>
-        {/* <Route path="/login-user" element={<UserLogin/>}/> */}
-        {/* <Route path="/register-wholesale-seller" element={<WholeSaleSellerRegister />}/> */}
-        {/* <Route path="/register-user" element={<UserRegister />}/> */}
-        {/* <Route path="/forgot-password" element={<ForgotPassword />}/> */}
 
         <Route path="/dashboard-banner" element={<DashboardBanner />} />
         <Route path="/dashboard-rigid" element={<DashboardRigid />} />
