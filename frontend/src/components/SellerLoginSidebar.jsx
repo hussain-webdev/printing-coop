@@ -66,6 +66,7 @@ const SellerLoginSidebar = ({ isOpen, onClose, onForgotPasswordClick }) => {
       if (data.success && data.token) {
         localStorage.setItem('sellerToken', data.token)
         localStorage.setItem('sellerEmail', formData.email)
+        localStorage.setItem('sellerId', data.id)
         localStorage.setItem('userType', 'wholesale-seller')
         toast.success('Login successful! Redirecting...')
         onClose()

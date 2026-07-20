@@ -94,6 +94,7 @@ const SellerApplySidebar = ({ isOpen, onClose }) => {
       if (data.success && data.token) {
         localStorage.setItem('sellerToken', data.token)
         localStorage.setItem('sellerEmail', formData.email)
+        localStorage.setItem('sellerId', data.id)
         localStorage.setItem('sellerName', formData.name.trim())
         localStorage.setItem('userType', 'wholesale-seller')
         toast.success('Registration successful! Redirecting...')

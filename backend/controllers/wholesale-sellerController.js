@@ -116,7 +116,7 @@ const registerWholesaleSeller = async (req, res) => {
       await redisClient.setEx(`seller:${seller.id}`, 3600, JSON.stringify(seller));
     }
 
-    res.json({ success: true, token });
+    res.json({ success: true, token, id: seller.id });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
@@ -138,7 +138,7 @@ const loginWholesaleSeller = async (req, res) => {
         const isMatch = await bcrypt.compare(password, seller.password);
         if (isMatch) {
           const token = createToken(seller.id);
-          return res.json({ success: true, token });
+          return res.json({ success: true, token, id: seller.id });
         }
       }
     }
@@ -164,7 +164,7 @@ const loginWholesaleSeller = async (req, res) => {
     }
 
     const token = createToken(seller.id);
-    res.json({ success: true, token });
+    res.json({ success: true, token, id: seller.id });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
@@ -272,4 +272,170 @@ const resetPasswordSeller = async (req, res) => {
   }
 };
 
-export { loginWholesaleSeller, registerWholesaleSeller, forgotPasswordSeller, resetPasswordSeller };
+// Route to get single seller details by ID (from JWT token)
+const getSellerDetails = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.json({ success: false, message: 'Token is required' });
+    }
+
+    // Verify token and extract seller ID
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const sellerId = decoded.id;
+
+    const redisClient = getRedisClient();
+
+    // Check cache first
+    if (redisClient) {
+      const cachedSeller = await redisClient.get(`seller:${sellerId}`);
+      if (cachedSeller) {
+        return res.json({ success: true, seller: JSON.parse(cachedSeller) });
+      }
+    }
+
+    // Query database if not in cache
+    const seller = await prisma.wholesaleSeller.findUnique({
+      where: { id: sellerId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phoneNumber: true,
+        address: true,
+        address2: true,
+        companyName: true,
+        country: true,
+        city: true,
+        state: true,
+        zipcode: true,
+        website: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!seller) {
+      return res.json({ success: false, message: 'Seller not found' });
+    }
+
+    // Cache seller for future requests
+    if (redisClient) {
+      await redisClient.setEx(`seller:${sellerId}`, 3600, JSON.stringify(seller));
+    }
+
+    res.json({ success: true, seller });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.json({ success: false, message: 'Invalid token' });
+    }
+    console.error('[v0] Error getting seller details:', error.message);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// Route to edit seller profile
+const editSellerProfile = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.json({ success: false, message: 'Token is required' });
+    }
+
+    // Verify token and extract seller ID
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const sellerId = decoded.id;
+
+    const { name, email, phoneNumber, address, address2, companyName, country, city, state, zipcode, website } = req.body;
+
+    // Check if seller exists
+    const seller = await prisma.wholesaleSeller.findUnique({
+      where: { id: sellerId },
+    });
+
+    if (!seller) {
+      return res.json({ success: false, message: 'Seller not found' });
+    }
+
+    // Check if email is being changed and if it's already taken by another seller
+    if (email && email !== seller.email) {
+      const existingSellerWithEmail = await prisma.wholesaleSeller.findUnique({
+        where: { email },
+      });
+
+      if (existingSellerWithEmail) {
+        return res.json({ success: false, message: 'Email already in use by another seller' });
+      }
+    }
+
+    // Validate email format if provided
+    if (email && !email.includes('@')) {
+      return res.json({ success: false, message: 'Please enter a valid email' });
+    }
+
+    // Build update data with only provided fields
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (phoneNumber) updateData.phoneNumber = phoneNumber;
+    if (address) updateData.address = address;
+    if (address2 !== undefined) updateData.address2 = address2 || null;
+    if (companyName) updateData.companyName = companyName;
+    if (country) updateData.country = country;
+    if (city) updateData.city = city;
+    if (state) updateData.state = state;
+    if (zipcode) updateData.zipcode = zipcode;
+    if (website !== undefined) updateData.website = website || null;
+
+    // Check if at least one field is being updated
+    if (Object.keys(updateData).length === 0) {
+      return res.json({ success: false, message: 'No fields to update' });
+    }
+
+    // Update seller profile
+    const updatedSeller = await prisma.wholesaleSeller.update({
+      where: { id: sellerId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phoneNumber: true,
+        address: true,
+        address2: true,
+        companyName: true,
+        country: true,
+        city: true,
+        state: true,
+        zipcode: true,
+        website: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    // Invalidate cache for this seller
+    const redisClient = getRedisClient();
+    if (redisClient) {
+      await redisClient.del(`seller:${sellerId}`);
+      if (seller.email !== email) {
+        await redisClient.del(`seller:email:${seller.email}`);
+        if (email) {
+          await redisClient.del(`seller:email:${email}`);
+        }
+      }
+    }
+
+    res.json({ success: true, message: 'Profile updated successfully', seller: updatedSeller });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.json({ success: false, message: 'Invalid token' });
+    }
+    console.error('[v0] Error editing seller profile:', error.message);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+export { loginWholesaleSeller, registerWholesaleSeller, forgotPasswordSeller, resetPasswordSeller, getSellerDetails, editSellerProfile };
