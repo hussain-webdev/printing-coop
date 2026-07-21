@@ -686,7 +686,7 @@ const OrderHistory = () => {
                               disabled={reorderingOrderId === order.id}
                               className='px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-xs font-semibold rounded transition'
                             >
-                              {reorderingOrderId === order.id ? 'Adding...' : 'Add to Cart'}
+                              {reorderingOrderId === order.id ? 'Adding to Cart...' : 'Reorder'}
                             </button>
                             <button
                               onClick={() => downloadReceipt(order)}

@@ -45,7 +45,7 @@ const DashboardNavbar = () => {
 
             <div className='flex gap-5 items-center'>
                 <button
-                  // onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/product-listing')}
                   className='flex items-center gap-2 bg-[#0b1f4d] hover:bg-[#0e2a63] transition-colors text-white px-5 py-2.5 rounded-md'
                 >
                     <ShoppingBasket size={20} strokeWidth={1.5} />

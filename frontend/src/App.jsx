@@ -24,6 +24,7 @@ import OrderApparel from "./pages/OrderApparel"
 import OrderDTF from "./pages/OrderDTF"
 import DashboardFlag from "./pages/DashboardFlag"
 import OrderFlag from "./pages/OrderFlag"
+import ProductListing from "./pages/ProductListing"
 
 function App() {
 
@@ -60,6 +61,7 @@ function App() {
         <Route path="/dashboard-magnet" element={<DashboardMagnet />} />
         <Route path="/dashboard-apparel" element={<DashboardApparel />} />
         <Route path="/dashboard-flag" element={<DashboardFlag />} />
+        <Route path="/product-listing" element={<ProductListing />} />
 
         <Route path="/manage-account" element={<ManageAccount />} />
         <Route path="/manage-payments" element={<ManagePayments />} />
