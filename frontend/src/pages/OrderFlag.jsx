@@ -84,6 +84,29 @@ const OrderFlag = () => {
     return `${w.toFixed(2)}" x ${h.toFixed(2)}"`
   }
 
+  // Each active finish config option adds a flat surcharge to the base price:
+  // - boolean options add the surcharge only when set to true
+  // - other options add the surcharge whenever they hold a non-empty value
+  const CONFIG_SURCHARGE = 2.5
+
+  const getConfigSurcharge = () => {
+    if (!product?.finishConfig) return 0
+
+    return Object.entries(product.finishConfig).reduce((total, [key, originalValue]) => {
+      const currentValue = selectedConfig[key] !== undefined ? selectedConfig[key] : originalValue
+      const isBoolean = typeof originalValue === 'boolean'
+
+      if (isBoolean) {
+        return currentValue === true ? total + CONFIG_SURCHARGE : total
+      }
+
+      const hasValue = currentValue !== '' && currentValue !== null && currentValue !== undefined
+      return hasValue ? total + CONFIG_SURCHARGE : total
+    }, 0)
+  }
+
+  const getAdjustedBasePrice = () => (product ? product.basePrice + getConfigSurcharge() : 0)
+
   // Handle add to cart
   const handleAddToCart = async () => {
     try {
@@ -117,6 +140,7 @@ const OrderFlag = () => {
           height: getTotalHeight(),
           size: [widthFt ? `${widthFt}ft` : '', widthIn ? `${widthIn}in` : '', heightFt ? `${heightFt}ft` : '', heightIn ? `${heightIn}in` : ''].filter(Boolean),
           selectedFinishConfig: selectedConfig,
+          basePrice: getAdjustedBasePrice(),
         }),
       })
 
@@ -178,7 +202,7 @@ const OrderFlag = () => {
                   <p className='text-gray-600'>{product.name} Flag, {getDimensionString()}</p>
                 </div>
                 <div className='text-right'>
-                  <p className='text-5xl font-bold text-green-500'>${product.basePrice.toFixed(2)}</p>
+                  <p className='text-5xl font-bold text-green-500'>${getAdjustedBasePrice().toFixed(2)}</p>
                   <p className='text-gray-600 text-sm'>0 sqft / 24 Hours Production</p>
                 </div>
               </div>
