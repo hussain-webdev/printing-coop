@@ -1,0 +1,122 @@
+{
+  "nav": {
+    "cart": "Cart",
+    "orderHistory": "Order History",
+    "manageAccount": "Manage Account",
+    "managePayments": "Manage Payments",
+    "products": "Products",
+    "productListing": "Product Listing",
+    "categories": {
+      "banner": "BANNER",
+      "rigid": "RIGID",
+      "adhesive": "ADHESIVE",
+      "magnets": "MAGNETS",
+      "apparel": "APPAREL",
+      "flagFabric": "FLAG & FABRIC",
+      "miscPrints": "MISC & PRINTS"
+    }
+  },
+  "common": {
+    "addToCart": "Add to Cart",
+    "checkout": "Check Out",
+    "save": "Save",
+    "cancel": "Cancel",
+    "reset": "Reset",
+    "search": "Search",
+    "edit": "Edit",
+    "remove": "Remove",
+    "delete": "Delete",
+    "quantity": "Quantity",
+    "price": "Price",
+    "size": "Size",
+    "loading": "Loading...",
+    "connectionError": "Connection error. Please try again.",
+    "standard": "Standard"
+  },
+  "cart": {
+    "title": "Here's your order!",
+    "empty": "Your cart is empty",
+    "emptySubtitle": "Start adding products to your order!",
+    "continueShopping": "Continue Shopping",
+    "product": "Product",
+    "options": "Options",
+    "action": "Action",
+    "total": "TOTAL",
+    "saveCart": "Save Cart",
+    "pleaseLogin": "Please login to view your cart",
+    "fetchError": "Failed to fetch cart",
+    "quantityMin": "Quantity must be at least 1",
+    "quantityUpdated": "Quantity updated",
+    "quantityUpdateFailed": "Failed to update quantity",
+    "quantityUpdateError": "Error updating quantity",
+    "itemRemoved": "Item removed from cart",
+    "removeFailed": "Failed to remove item",
+    "removeError": "Error removing item"
+  },
+  "orderHistory": {
+    "title": "Order History",
+    "csvDownload": "CSV Download",
+    "shipped": "Shipped",
+    "shippingDetails": "Shipping Details",
+    "viewReceipt": "View Receipt",
+    "orderId": "Order ID",
+    "date": "Date"
+  },
+  "placeOrder": {
+    "title": "Place Order",
+    "orderReview": "Order Review",
+    "shippingAddress": "Shipping Address",
+    "paymentMethod": "Payment Method",
+    "orderSummary": "Order Summary",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "backToCart": "Back to Cart",
+    "addAddress": "Add Address",
+    "codDescription": "Pay when you receive your order"
+  },
+  "dashboard": {
+    "magnet": "Magnet Products",
+    "flag": "Flag & Fabric Products",
+    "rigid": "Rigid Products",
+    "misc": "Misc & Print Products",
+    "banner": "Banner Products",
+    "adhesive": "Adhesive Products",
+    "apparel": "Apparel Products",
+    "noProducts": "No products available at the moment."
+  },
+  "productListing": {
+    "title": "All Products",
+    "searchPlaceholder": "Search by name...",
+    "category": "Category",
+    "allCategories": "All Categories",
+    "sortByPrice": "Sort by Price",
+    "default": "Default",
+    "lowToHigh": "Price: Low to High",
+    "highToLow": "Price: High to Low",
+    "reset": "Reset",
+    "noMatches": "No products match your filters."
+  },
+  "managePayments": {
+    "title": "MANAGE PAYMENTS",
+    "cardsOnFile": "card(s) on file",
+    "noCards": "No cards found",
+    "addNewCard": "Add new card"
+  },
+  "manageAccount": {
+    "title": "Manage Account",
+    "users": "Users",
+    "default": "Default",
+    "shippingAddresses": "Shipping Addresses",
+    "addAddress": "Add Address",
+    "saveChanges": "Save Changes",
+    "cancel": "Cancel",
+    "saveAddress": "Save Address"
+  },
+  "footer": {
+    "feedback": "TELL US HOW WE ARE DOING?",
+    "copyright": "Copyright © 2026",
+    "termsAndConditions": "Terms & Conditions",
+    "phone": "(800) 000-0000",
+    "customerServiceHours": "Customer Service Hours"
+  }
+}

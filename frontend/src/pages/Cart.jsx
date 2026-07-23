@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import DashboardNavbar from '../components/DashboardNavbar'
 import Footer from '../components/Footer'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const Cart = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [cartItems, setCartItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -27,7 +29,7 @@ const Cart = () => {
       const sellerId = localStorage.getItem('sellerId')
 
       if (!token || !sellerId) {
-        setError('Please login to view your cart')
+        setError(t('cart.pleaseLogin'))
         setLoading(false)
         return
       }
@@ -47,13 +49,13 @@ const Cart = () => {
         setCartItems(data.cartItems)
         setError(null)
       } else {
-        setError(data.message || 'Failed to fetch cart')
-        toast.error('Failed to fetch cart')
+        setError(data.message || t('cart.fetchError'))
+        toast.error(t('cart.fetchError'))
       }
     } catch (err) {
       console.error('[v0] Error fetching cart:', err)
-      setError('Connection error. Please try again.')
-      toast.error('Connection error.')
+      setError(t('common.connectionError'))
+      toast.error(t('common.connectionError'))
     } finally {
       setLoading(false)
     }
@@ -61,7 +63,7 @@ const Cart = () => {
 
   const handleUpdateQuantity = async (cartItemId, newQuantity) => {
     if (newQuantity < 1) {
-      toast.error('Quantity must be at least 1')
+      toast.error(t('cart.quantityMin'))
       return
     }
 
@@ -88,13 +90,13 @@ const Cart = () => {
             : item
         ))
         setEditingQuantity({ ...editingQuantity, [cartItemId]: undefined })
-        toast.success('Quantity updated')
+        toast.success(t('cart.quantityUpdated'))
       } else {
-        toast.error(data.message || 'Failed to update quantity')
+        toast.error(data.message || t('cart.quantityUpdateFailed'))
       }
     } catch (err) {
       console.error('[v0] Error updating quantity:', err)
-      toast.error('Error updating quantity')
+      toast.error(t('cart.quantityUpdateError'))
     } finally {
       setUpdatingItem(null)
     }
@@ -118,13 +120,13 @@ const Cart = () => {
 
       if (data.success) {
         setCartItems(cartItems.filter((item) => item.id !== cartItemId))
-        toast.success('Item removed from cart')
+        toast.success(t('cart.itemRemoved'))
       } else {
-        toast.error(data.message || 'Failed to remove item')
+        toast.error(data.message || t('cart.removeFailed'))
       }
     } catch (err) {
       console.error('[v0] Error deleting item:', err)
-      toast.error('Error removing item')
+      toast.error(t('cart.removeError'))
     } finally {
       setDeletingItem(null)
     }
@@ -135,7 +137,7 @@ const Cart = () => {
   }
 
   const formatFinishConfig = (config) => {
-    if (!config || typeof config !== 'object') return 'Standard'
+    if (!config || typeof config !== 'object') return t('common.standard')
     
     return Object.entries(config)
       .map(([key, value]) => {
@@ -216,16 +218,16 @@ const Cart = () => {
           {cartItems.length > 0 ? (
             <div className='bg-white rounded-lg shadow p-6 sm:p-8'>
               {/* Header */}
-              <h1 className='text-3xl font-bold text-gray-900 mb-8'>Here&apos;s your order!</h1>
+              <h1 className='text-3xl font-bold text-gray-900 mb-8'>{t('cart.title')}</h1>
 
               {/* Column labels */}
               <div className='grid grid-cols-[3fr_1.2fr_1.4fr_0.8fr_0.8fr_0.8fr] gap-4 pb-3 border-b border-gray-200 text-sm font-semibold text-gray-900'>
-                <div>Product</div>
-                <div>Size</div>
-                <div>Options</div>
-                <div>Quantity</div>
-                <div>Price</div>
-                <div className='text-right'>Action</div>
+                <div>{t('cart.product')}</div>
+                <div>{t('common.size')}</div>
+                <div>{t('cart.options')}</div>
+                <div>{t('common.quantity')}</div>
+                <div>{t('common.price')}</div>
+                <div className='text-right'>{t('cart.action')}</div>
               </div>
 
               {/* Items */}
@@ -267,7 +269,7 @@ const Cart = () => {
                             disabled={updatingItem === item.id}
                             className='px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded text-xs disabled:opacity-50'
                           >
-                            Save
+                            {t('common.save')}
                           </button>
                         </div>
                       ) : (
@@ -290,14 +292,14 @@ const Cart = () => {
                         disabled={editingQuantity[item.id] !== undefined}
                         className='px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded text-xs uppercase tracking-wide disabled:opacity-50 transition'
                       >
-                        Edit
+                        {t('common.edit')}
                       </button>
                       <button
                         onClick={() => handleDeleteItem(item.id)}
                         disabled={deletingItem === item.id}
                         className='px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded text-xs uppercase tracking-wide disabled:opacity-50 transition'
                       >
-                        Remove
+                        {t('common.remove')}
                       </button>
                     </div>
                   </div>
@@ -318,25 +320,25 @@ const Cart = () => {
               {/* Total + actions */}
               <div className='flex flex-col items-end gap-3 pt-6'>
                 <p className='text-lg font-bold text-gray-900'>
-                  TOTAL: ${calculateTotal().toFixed(2)}
+                  {t('cart.total')}: ${calculateTotal().toFixed(2)}
                 </p>
                   <button
                     onClick={() => navigate('/place-order')}
                     className='px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded text-xs uppercase tracking-wide transition'
                   >
-                    Check out
+                    {t('common.checkout')}
                   </button>
               </div>
             </div>
           ) : (
             <div className='bg-gray-50 border border-gray-200 rounded-lg p-8 text-center'>
-              <p className='text-gray-700 text-lg mb-4'>Your cart is empty</p>
-              <p className='text-gray-600 mb-6'>Start adding products to your order!</p>
+              <p className='text-gray-700 text-lg mb-4'>{t('cart.empty')}</p>
+              <p className='text-gray-600 mb-6'>{t('cart.emptySubtitle')}</p>
               <a
                 href='/dashboard-banner'
                 className='inline-block px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold rounded-lg transition'
               >
-                Continue Shopping
+                {t('cart.continueShopping')}
               </a>
             </div>
           )}

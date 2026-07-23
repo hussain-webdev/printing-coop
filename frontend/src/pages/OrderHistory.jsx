@@ -4,12 +4,14 @@ import { Loader, Search, ChevronDown, RotateCcw, Download, FileText, Star, Filte
 import toast from 'react-hot-toast'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import { useTranslation } from 'react-i18next'
 import DashboardNavbar from '../components/DashboardNavbar'
 import Footer from '../components/Footer'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const OrderHistory = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const receiptRef = useRef()
   const [orders, setOrders] = useState([])
@@ -53,7 +55,7 @@ const OrderHistory = () => {
         const sellerId = localStorage.getItem('sellerId')
 
         if (!token || !sellerId) {
-          setError('Please login to view your orders')
+          setError(t('nav.orderHistory'))
           setLoading(false)
           return
         }
@@ -73,13 +75,13 @@ const OrderHistory = () => {
           setOrders(data.orders)
           setError(null)
         } else {
-          setError(data.message || 'Failed to fetch orders')
-          toast.error('Failed to fetch orders')
+          setError(data.message || t('orderHistory.title'))
+          toast.error(t('orderHistory.title'))
         }
       } catch (err) {
         console.error('[v0] Error fetching orders:', err)
-        setError('Connection error. Please check your backend server.')
-        toast.error('Connection error. Please try again.')
+        setError(t('common.connectionError'))
+        toast.error(t('common.connectionError'))
       } finally {
         setLoading(false)
       }
@@ -197,7 +199,7 @@ const OrderHistory = () => {
       const sellerId = localStorage.getItem('sellerId')
 
       if (!token || !sellerId) {
-        toast.error('Please login to reorder')
+        toast.error(t('cart.pleaseLogin'))
         return
       }
 
@@ -235,7 +237,7 @@ const OrderHistory = () => {
   const downloadCSV = () => {
     try {
       // Create CSV headers
-      const headers = ['Order Number', 'Order Date', 'Phone Number', 'Street', 'City', 'State', 'Zipcode', 'Country', 'Subtotal', 'Shipping Cost', 'Total', 'Order Status', 'Payment Status', 'Payment Method']
+      const headers = ['Order Number', 'Order Date', 'Phone Number', 'Street', 'City', 'State', 'Zip Code', 'Country', 'Subtotal', 'Shipping Cost', 'Total', 'Order Status', 'Payment Status', 'Payment Method']
       
       // Create CSV rows
       const rows = orders.map((order) => [
@@ -285,7 +287,7 @@ const OrderHistory = () => {
       // Create receipt HTML
       const receiptHTML = `
         <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 800px;">
-          <h1 style="text-align: center; margin-bottom: 30px;">Order Receipt</h1>
+          <h1 style="text-align: center; margin-bottom: 30px;">${t('orderHistory.viewReceipt')}</h1>
           
           <div style="margin-bottom: 20px;">
             <h3>Order Information</h3>
@@ -383,7 +385,7 @@ const OrderHistory = () => {
       }
 
       pdf.save(`receipt-${order.orderNumber}.pdf`)
-      toast.success('Receipt downloaded successfully')
+      toast.success(t('orderHistory.viewReceipt'))
       
       // Clean up
       document.body.removeChild(element)
@@ -402,13 +404,13 @@ const OrderHistory = () => {
         <div className='max-w-7xl mx-auto px-4 py-8'>
           {/* Header */}
           <div className='mb-6 flex justify-between items-center'>
-            <h1 className='text-4xl font-bold text-gray-900'>Order History</h1>
+            <h1 className='text-4xl font-bold text-gray-900'>{t('orderHistory.title')}</h1>
             {orders.length > 0 && (
               <button
                 onClick={downloadCSV}
                 className='px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold uppercase tracking-wide rounded transition'
               >
-                CSV Download
+                {t('orderHistory.csvDownload')}
               </button>
             )}
           </div>
@@ -440,13 +442,13 @@ const OrderHistory = () => {
                       onClick={() => setOpenFilterMenu(openFilterMenu === 'order' ? null : 'order')}
                       className='flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 transition'
                     >
-                      Order
+                      {t('orderHistory.orderId')}
                       <ChevronDown size={14} />
                     </button>
                     {openFilterMenu === 'order' && (
                       <div className='absolute z-10 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg p-4 space-y-3'>
                         <div>
-                          <label className='block text-xs font-medium text-gray-700 mb-1'>Order ID</label>
+                          <label className='block text-xs font-medium text-gray-700 mb-1'>{t('orderHistory.orderId')}</label>
                           <div className='relative'>
                             <Search size={14} className='absolute left-2.5 top-2.5 text-gray-400' />
                             <input
@@ -459,7 +461,7 @@ const OrderHistory = () => {
                           </div>
                         </div>
                         <div>
-                          <label className='block text-xs font-medium text-gray-700 mb-1'>Order Status</label>
+                          <label className='block text-xs font-medium text-gray-700 mb-1'>{t('orderHistory.title')}</label>
                           <select
                             value={selectedOrderStatus}
                             onChange={(e) => setSelectedOrderStatus(e.target.value)}
@@ -467,13 +469,13 @@ const OrderHistory = () => {
                           >
                             <option value='all'>All Statuses</option>
                             <option value='Pending'>Pending</option>
-                            <option value='Shipped'>Shipped</option>
+                            <option value='Shipped'>{t('orderHistory.shipped')}</option>
                             <option value='Completed'>Completed</option>
                             <option value='Cancelled'>Cancelled</option>
                           </select>
                         </div>
                         <div>
-                          <label className='block text-xs font-medium text-gray-700 mb-1'>Payment Status</label>
+                          <label className='block text-xs font-medium text-gray-700 mb-1'>{t('placeOrder.paymentMethod')}</label>
                           <select
                             value={selectedPaymentStatus}
                             onChange={(e) => setSelectedPaymentStatus(e.target.value)}
@@ -493,7 +495,7 @@ const OrderHistory = () => {
                   <button
                     className='flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-700 cursor-default'
                   >
-                    Image
+                    {t('orderHistory.viewReceipt')}
                     <ChevronDown size={14} />
                   </button>
 
@@ -503,7 +505,7 @@ const OrderHistory = () => {
                       onClick={() => setOpenFilterMenu(openFilterMenu === 'product' ? null : 'product')}
                       className='flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 transition'
                     >
-                      Product
+                      {t('placeOrder.orderReview')}
                       <ChevronDown size={14} />
                     </button>
                     {openFilterMenu === 'product' && (

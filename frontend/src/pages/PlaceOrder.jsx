@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader, Trash2, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import DashboardNavbar from '../components/DashboardNavbar'
 import Footer from '../components/Footer'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const PlaceOrder = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   
   const [cartItems, setCartItems] = useState([])
@@ -40,7 +42,7 @@ const PlaceOrder = () => {
         const sellerId = localStorage.getItem('sellerId')
 
         if (!token || !sellerId) {
-          toast.error('Please login to place order')
+          toast.error(t('placeOrder.title'))
           navigate('/')
           return
         }
@@ -58,7 +60,7 @@ const PlaceOrder = () => {
         const cartData = await cartResponse.json()
 
         if (!cartData.success) {
-          toast.error('Failed to fetch cart')
+          toast.error(t('cart.fetchError'))
           navigate('/cart')
           return
         }
@@ -89,7 +91,7 @@ const PlaceOrder = () => {
         setLoading(false)
       } catch (err) {
         console.error('[v0] Error fetching data:', err)
-        toast.error('Connection error')
+        toast.error(t('common.connectionError'))
         setLoading(false)
       }
     }
@@ -100,7 +102,7 @@ const PlaceOrder = () => {
   // Handle add new address
   const handleAddAddress = () => {
     if (!newAddress.street || !newAddress.city || !newAddress.state || !newAddress.zipcode || !newAddress.country || !newAddress.phoneNumber) {
-      toast.error('Please fill all fields')
+      toast.error(t('common.connectionError'))
       return
     }
 
@@ -156,12 +158,12 @@ const PlaceOrder = () => {
       const selectedAddress = getSelectedAddress()
 
       if (!selectedAddress) {
-        toast.error('Please select a shipping address')
+        toast.error(t('placeOrder.shippingAddress'))
         return
       }
 
       if (cartItems.length === 0) {
-        toast.error('Your cart is empty')
+        toast.error(t('cart.empty'))
         return
       }
 
@@ -197,14 +199,14 @@ const PlaceOrder = () => {
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Order placed successfully!')
+        toast.success(t('placeOrder.orderSummary'))
         navigate('/order-history')
       } else {
-        toast.error(data.message || 'Failed to place order')
+        toast.error(data.message || t('placeOrder.title'))
       }
     } catch (err) {
       console.error('[v0] Error placing order:', err)
-      toast.error('Error placing order')
+      toast.error(t('common.connectionError'))
     } finally {
       setPlacingOrder(false)
     }
@@ -281,12 +283,12 @@ const PlaceOrder = () => {
         <div className='pt-34 md:pt-30 pb-24'>
           <div className='max-w-7xl mx-auto px-4 py-8'>
             <div className='bg-gray-50 border border-gray-200 rounded-lg p-8 text-center'>
-              <p className='text-gray-700 text-lg mb-4'>Your cart is empty</p>
+              <p className='text-gray-700 text-lg mb-4'>{t('cart.empty')}</p>
               <a
                 href='/dashboard-banner'
                 className='inline-block px-6 py-3 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold rounded-lg transition'
               >
-                Continue Shopping
+                {t('cart.continueShopping')}
               </a>
             </div>
           </div>
@@ -303,7 +305,7 @@ const PlaceOrder = () => {
         <div className='max-w-5xl mx-auto px-4 py-8'>
           <div className='border border-gray-200 rounded-lg overflow-hidden shadow-sm mb-8'>
             <div className='bg-orange-500 px-6 py-5'>
-              <h1 className='text-sm font-bold uppercase tracking-wide text-slate-900'>Place Order</h1>
+              <h1 className='text-sm font-bold uppercase tracking-wide text-slate-900'>{t('placeOrder.title')}</h1>
             </div>
           </div>
 
@@ -313,7 +315,7 @@ const PlaceOrder = () => {
               {/* Order Review */}
               <div className='border border-gray-200 rounded-lg overflow-hidden shadow-sm'>
                 <div className='bg-black px-6 py-2.5'>
-                  <h2 className='text-xs font-bold uppercase tracking-wide text-white'>Order Review</h2>
+                  <h2 className='text-xs font-bold uppercase tracking-wide text-white'>{t('placeOrder.orderReview')}</h2>
                 </div>
                 <div className='divide-y divide-gray-200'>
                   {cartItems.map((item) => (
@@ -335,7 +337,7 @@ const PlaceOrder = () => {
               {/* Shipping Address */}
               <div className='border border-gray-200 rounded-lg overflow-hidden shadow-sm'>
                 <div className='bg-black px-6 py-2.5'>
-                  <h2 className='text-xs font-bold uppercase tracking-wide text-white'>Shipping Address</h2>
+                  <h2 className='text-xs font-bold uppercase tracking-wide text-white'>{t('placeOrder.shippingAddress')}</h2>
                 </div>
                 <div className='divide-y divide-gray-200'>
                   {/* Current Address */}
@@ -413,7 +415,7 @@ const PlaceOrder = () => {
                         className='flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold uppercase tracking-wide rounded transition'
                       >
                         <Plus size={14} />
-                        Add Address
+                        {t('placeOrder.addAddress')}
                       </button>
                     ) : (
                       <div className='border border-gray-200 rounded-lg p-4 space-y-3 max-w-md'>
@@ -464,13 +466,13 @@ const PlaceOrder = () => {
                             onClick={handleAddAddress}
                             className='flex-1 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold uppercase tracking-wide rounded transition'
                           >
-                            Save Address
+                            {t('common.save')}
                           </button>
                           <button
                             onClick={() => setShowAddAddressForm(false)}
                             className='flex-1 px-4 py-2 border border-gray-300 text-gray-700 text-xs font-semibold uppercase tracking-wide rounded hover:bg-gray-50 transition'
                           >
-                            Cancel
+                            {t('common.cancel')}
                           </button>
                         </div>
                       </div>
@@ -482,7 +484,7 @@ const PlaceOrder = () => {
               {/* Payment Method */}
               <div className='border border-gray-200 rounded-lg overflow-hidden shadow-sm'>
                 <div className='bg-black px-6 py-2.5'>
-                  <h2 className='text-xs font-bold uppercase tracking-wide text-white'>Payment Method</h2>
+                  <h2 className='text-xs font-bold uppercase tracking-wide text-white'>{t('placeOrder.paymentMethod')}</h2>
                 </div>
                 <label className='flex items-center gap-3 px-6 py-4 cursor-pointer'>
                   <input
@@ -492,8 +494,8 @@ const PlaceOrder = () => {
                     readOnly
                   />
                   <div>
-                    <p className='font-semibold text-gray-900 text-sm'>Cash on Delivery</p>
-                    <p className='text-xs text-gray-500 mt-0.5'>Pay when you receive your order</p>
+                    <p className='font-semibold text-gray-900 text-sm'>{t('placeOrder.paymentMethod')}</p>
+                    <p className='text-xs text-gray-500 mt-0.5'>{t('placeOrder.codDescription')}</p>
                   </div>
                 </label>
               </div>
@@ -503,20 +505,20 @@ const PlaceOrder = () => {
             <div className='lg:col-span-1'>
               <div className='border border-gray-200 rounded-lg overflow-hidden shadow-sm sticky top-40'>
                 <div className='bg-black px-6 py-2.5'>
-                  <h2 className='text-xs font-bold uppercase tracking-wide text-white'>Order Summary</h2>
+                  <h2 className='text-xs font-bold uppercase tracking-wide text-white'>{t('placeOrder.orderSummary')}</h2>
                 </div>
                 <div className='px-6 py-4'>
                   <div className='space-y-2 mb-4 text-sm'>
                     <div className='flex justify-between text-gray-700'>
-                      <span>Subtotal</span>
+                      <span>{t('placeOrder.subtotal')}</span>
                       <span className='font-medium text-gray-900'>${calculateTotal().toFixed(2)}</span>
                     </div>
                     <div className='flex justify-between text-gray-700'>
-                      <span>Shipping</span>
+                      <span>{t('placeOrder.shipping')}</span>
                       <span className='font-medium text-gray-900'>${shippingCost.toFixed(2)}</span>
                     </div>
                     <div className='border-t border-gray-200 pt-2 flex justify-between items-center'>
-                      <span className='font-bold text-gray-900'>Total</span>
+                      <span className='font-bold text-gray-900'>{t('cart.total')}</span>
                       <span className='text-lg font-bold text-gray-900'>${(calculateTotal() + shippingCost).toFixed(2)}</span>
                     </div>
                   </div>
@@ -526,14 +528,14 @@ const PlaceOrder = () => {
                     disabled={placingOrder}
                     className='w-full px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-semibold uppercase tracking-wide rounded transition'
                   >
-                    {placingOrder ? 'Placing Order...' : 'Place Order'}
+                    {placingOrder ? `${t('common.loading')}` : t('placeOrder.title')}
                   </button>
 
                   <button
                     onClick={() => navigate('/cart')}
                     className='w-full mt-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold uppercase tracking-wide rounded transition'
                   >
-                    Back to Cart
+                    {t('placeOrder.backToCart')}
                   </button>
                 </div>
               </div>

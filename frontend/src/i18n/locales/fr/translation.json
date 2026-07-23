@@ -1,0 +1,122 @@
+{
+  "nav": {
+    "cart": "Panier",
+    "orderHistory": "Historique des commandes",
+    "manageAccount": "Gérer le compte",
+    "managePayments": "Gérer les paiements",
+    "products": "Produits",
+    "productListing": "Liste des produits",
+    "categories": {
+      "banner": "BANNIÈRE",
+      "rigid": "RIGIDE",
+      "adhesive": "ADHÉSIF",
+      "magnets": "AIMANTS",
+      "apparel": "VÊTEMENTS",
+      "flagFabric": "DRAPEAU ET TISSU",
+      "miscPrints": "DIVERS ET IMPRESSIONS"
+    }
+  },
+  "common": {
+    "addToCart": "Ajouter au panier",
+    "checkout": "Passer la commande",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "reset": "Réinitialiser",
+    "search": "Rechercher",
+    "edit": "Modifier",
+    "remove": "Retirer",
+    "delete": "Supprimer",
+    "quantity": "Quantité",
+    "price": "Prix",
+    "size": "Taille",
+    "loading": "Chargement...",
+    "connectionError": "Erreur de connexion. Veuillez réessayer.",
+    "standard": "Standard"
+  },
+  "cart": {
+    "title": "Voici votre commande !",
+    "empty": "Votre panier est vide",
+    "emptySubtitle": "Commencez à ajouter des produits à votre commande !",
+    "continueShopping": "Continuer les achats",
+    "product": "Produit",
+    "options": "Options",
+    "action": "Action",
+    "total": "TOTAL",
+    "saveCart": "Enregistrer le panier",
+    "pleaseLogin": "Veuillez vous connecter pour voir votre panier",
+    "fetchError": "Échec du chargement du panier",
+    "quantityMin": "La quantité doit être d'au moins 1",
+    "quantityUpdated": "Quantité mise à jour",
+    "quantityUpdateFailed": "Échec de la mise à jour de la quantité",
+    "quantityUpdateError": "Erreur lors de la mise à jour de la quantité",
+    "itemRemoved": "Article retiré du panier",
+    "removeFailed": "Échec du retrait de l'article",
+    "removeError": "Erreur lors du retrait de l'article"
+  },
+  "orderHistory": {
+    "title": "Historique des commandes",
+    "csvDownload": "Télécharger le CSV",
+    "shipped": "Expédié",
+    "shippingDetails": "Détails d'expédition",
+    "viewReceipt": "Voir le reçu",
+    "orderId": "Numéro de commande",
+    "date": "Date"
+  },
+  "placeOrder": {
+    "title": "Passer la commande",
+    "orderReview": "Récapitulatif de la commande",
+    "shippingAddress": "Adresse de livraison",
+    "paymentMethod": "Mode de paiement",
+    "orderSummary": "Résumé de la commande",
+    "subtotal": "Sous-total",
+    "shipping": "Livraison",
+    "backToCart": "Retour au panier",
+    "addAddress": "Ajouter une adresse",
+    "codDescription": "Payez à la réception de votre commande"
+  },
+  "dashboard": {
+    "magnet": "Produits Aimants",
+    "flag": "Produits Drapeau et Tissu",
+    "rigid": "Produits Rigides",
+    "misc": "Produits Divers et Impressions",
+    "banner": "Produits Bannière",
+    "adhesive": "Produits Adhésifs",
+    "apparel": "Produits Vêtements",
+    "noProducts": "Aucun produit disponible pour le moment."
+  },
+  "productListing": {
+    "title": "Tous les produits",
+    "searchPlaceholder": "Rechercher par nom...",
+    "category": "Catégorie",
+    "allCategories": "Toutes les catégories",
+    "sortByPrice": "Trier par prix",
+    "default": "Par défaut",
+    "lowToHigh": "Prix : Du plus bas au plus élevé",
+    "highToLow": "Prix : Du plus élevé au plus bas",
+    "reset": "Réinitialiser",
+    "noMatches": "Aucun produit ne correspond à vos filtres."
+  },
+  "managePayments": {
+    "title": "GÉRER LES PAIEMENTS",
+    "cardsOnFile": "carte(s) enregistrée(s)",
+    "noCards": "Aucune carte trouvée",
+    "addNewCard": "Ajouter une nouvelle carte"
+  },
+  "manageAccount": {
+    "title": "Gérer le compte",
+    "users": "Utilisateurs",
+    "default": "Par défaut",
+    "shippingAddresses": "Adresses de livraison",
+    "addAddress": "Ajouter une adresse",
+    "saveChanges": "Enregistrer les modifications",
+    "cancel": "Annuler",
+    "saveAddress": "Enregistrer l'adresse"
+  },
+  "footer": {
+    "feedback": "COMMENT NOUS EN SOMMES-NOUS ?",
+    "copyright": "Copyright © 2026",
+    "termsAndConditions": "Termes et conditions",
+    "phone": "(800) 000-0000",
+    "customerServiceHours": "Horaires du service client"
+  }
+}

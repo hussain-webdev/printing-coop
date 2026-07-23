@@ -1,16 +1,19 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 
 const Footer = () => {
+  const { t } = useTranslation()
+  
   return (
     <div className='fixed bottom-0 left-0 right-0 w-full bg-white p-5 flex-wrap flex items-center gap-5 z-40'>
       <div className='bg-[#ffbb0f] cursor-pointer px-3 py-1.5 rounded '>
-        COMMENT NOUS EN SOMMES-NOUS ?
+        {t('footer.feedback')}
       </div>
       <ul className='text-sm font-light flex-wrap flex gap-5 items-center'>
-        <li>Copyright © 2026</li>
-        <li>Terms & Conditions</li>
-        <li>(800) 000-0000</li>
-        <li>Horaires du service client</li>
+        <li>{t('footer.copyright')}</li>
+        <li>{t('footer.termsAndConditions')}</li>
+        <li>{t('footer.phone')}</li>
+        <li>{t('footer.customerServiceHours')}</li>
       </ul>
     </div>
   )

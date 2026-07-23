@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Loader, Search, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import DashboardNavbar from '../components/DashboardNavbar'
 import Footer from '../components/Footer'
 import ProductCard from '../components/ProductCard'
@@ -8,6 +9,7 @@ import ProductCard from '../components/ProductCard'
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const ProductListing = () => {
+  const { t } = useTranslation()
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -77,7 +79,7 @@ const ProductListing = () => {
       <DashboardNavbar />
       <div className='pt-34 md:pt-30 pb-24'>
         <div className='p-4'>
-          <h1 className='pb-4 font-light text-2xl'>All Products</h1>
+          <h1 className='pb-4 font-light text-2xl'>{t('productListing.title')}</h1>
 
           {/* Filter toolbar */}
           <div className='flex flex-wrap items-center gap-2 pb-4 mb-4 border-b border-gray-200'>
@@ -86,7 +88,7 @@ const ProductListing = () => {
               <Search size={16} className='absolute left-3 top-2.5 text-gray-400' />
               <input
                 type='text'
-                placeholder='Search by name...'
+                placeholder={t('productListing.searchPlaceholder')}
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
                 className='w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
@@ -99,7 +101,7 @@ const ProductListing = () => {
                 onClick={() => setOpenFilterMenu(openFilterMenu === 'category' ? null : 'category')}
                 className='flex items-center gap-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 transition'
               >
-                Category
+                {t('productListing.category')}
                 <ChevronDown size={14} />
               </button>
               {openFilterMenu === 'category' && (
@@ -113,7 +115,7 @@ const ProductListing = () => {
                       selectedCategory === 'all' ? 'bg-slate-900 text-white' : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    All Categories
+                    {t('productListing.allCategories')}
                   </button>
                   {categories.map((cat) => (
                     <button
@@ -139,7 +141,7 @@ const ProductListing = () => {
                 onClick={() => setOpenFilterMenu(openFilterMenu === 'sort' ? null : 'sort')}
                 className='flex items-center gap-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 transition'
               >
-                Sort by Price
+                {t('productListing.sortByPrice')}
                 <ChevronDown size={14} />
               </button>
               {openFilterMenu === 'sort' && (
@@ -153,7 +155,7 @@ const ProductListing = () => {
                       sortOrder === 'none' ? 'bg-slate-900 text-white' : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    Default
+                    {t('productListing.default')}
                   </button>
                   <button
                     onClick={() => {
@@ -164,7 +166,7 @@ const ProductListing = () => {
                       sortOrder === 'asc' ? 'bg-slate-900 text-white' : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    Price: Low to High
+                    {t('productListing.lowToHigh')}
                   </button>
                   <button
                     onClick={() => {
@@ -175,7 +177,7 @@ const ProductListing = () => {
                       sortOrder === 'desc' ? 'bg-slate-900 text-white' : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
-                    Price: High to Low
+                    {t('productListing.highToLow')}
                   </button>
                 </div>
               )}
@@ -192,7 +194,7 @@ const ProductListing = () => {
                 }}
                 className='px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded transition'
               >
-                Reset
+                {t('productListing.reset')}
               </button>
             )}
           </div>
@@ -213,7 +215,7 @@ const ProductListing = () => {
             </div>
           ) : (
             <div className='bg-gray-50 border border-gray-200 rounded-lg p-6'>
-              <p className='text-gray-700'>No products match your filters.</p>
+              <p className='text-gray-700'>{t('productListing.noMatches')}</p>
             </div>
           )}
         </div>

@@ -1,9 +1,12 @@
 import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Menu, ShoppingBasket, ShoppingCart } from 'lucide-react';
+import { useTranslation } from 'react-i18next'
 import MenuSidebar from './MenuSidebar';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const DashboardNavbar = () => {
+  const { t } = useTranslation()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
@@ -11,20 +14,22 @@ const DashboardNavbar = () => {
   const isActive = (route) => location.pathname === route
 
   const categories = [
-    { route: '/dashboard-banner', icon: '/banner-icon.svg', label: 'BANNER' },
-    { route: '/dashboard-rigid', icon: '/rigid-icon.svg', label: 'RIGID' },
-    { route: '/dashboard-adhesive', icon: '/adhesive-icon.svg', label: 'ADHESIVE' },
-    { route: '/dashboard-magnet', icon: '/magnet-icon.svg', label: 'MAGNETS' },
-    { route: '/dashboard-apparel', icon: '/apparel-icon.svg', label: 'APPAREL' },
-    { route: '/dashboard-flag', icon: '/flag-icon.svg', label: 'FLAG & FABRIC' },
-    { route: '/dashboard-misc', icon: '/misc-icon.svg', label: 'MISC & PRINTS' },
+    { route: '/dashboard-banner', icon: '/banner-icon.svg', label: t('nav.categories.banner') },
+    { route: '/dashboard-rigid', icon: '/rigid-icon.svg', label: t('nav.categories.rigid') },
+    { route: '/dashboard-adhesive', icon: '/adhesive-icon.svg', label: t('nav.categories.adhesive') },
+    { route: '/dashboard-magnet', icon: '/magnet-icon.svg', label: t('nav.categories.magnets') },
+    { route: '/dashboard-apparel', icon: '/apparel-icon.svg', label: t('nav.categories.apparel') },
+    { route: '/dashboard-flag', icon: '/flag-icon.svg', label: t('nav.categories.flagFabric') },
+    { route: '/dashboard-misc', icon: '/misc-icon.svg', label: t('nav.categories.miscPrints') },
   ]
 
   return (
     <>
     <div className='fixed w-full z-40'>
         {/* Top Navy Bar */}
-        <div className='bg-[#0f2761] h-8 w-full' />
+        <div className='bg-[#0f2761] h-8 w-full' >
+          <LanguageSwitcher />
+        </div>
 
         {/* Desktop Navigation */}
         <div className='hidden md:flex bg-white shadow-[0_2px_6px_-2px_rgba(0,0,0,0.2)] px-6 py-3 justify-between items-center'>
@@ -49,7 +54,7 @@ const DashboardNavbar = () => {
                   className='flex items-center gap-2 bg-[#0b1f4d] hover:bg-[#0e2a63] transition-colors text-white px-5 py-2.5 rounded-md'
                 >
                     <ShoppingBasket size={20} strokeWidth={1.5} />
-                    <span className='text-sm font-semibold tracking-wide'>PRODUCT LISTING</span>
+                    <span className='text-sm font-semibold tracking-wide'>{t('nav.productListing').toUpperCase()}</span>
                 </button>
 
                 <div className='w-px h-10 bg-gray-200' />

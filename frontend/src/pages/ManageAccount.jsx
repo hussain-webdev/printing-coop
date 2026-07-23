@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { Loader, Pencil, Trash2, Plus, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import DashboardNavbar from '../components/DashboardNavbar'
 import Footer from '../components/Footer'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const ManageAccount = () => {
+  const { t } = useTranslation()
   const [sellerData, setSellerData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -58,7 +60,7 @@ const ManageAccount = () => {
         const email = localStorage.getItem('sellerEmail')
 
         if (!token || !email) {
-          setError('Please login to view your account details')
+          setError(t('cart.pleaseLogin'))
           setLoading(false)
           return
         }
@@ -261,12 +263,12 @@ const ManageAccount = () => {
             <div className='border border-gray-200 rounded-lg overflow-hidden shadow-sm'>
               {/* Header */}
               <div className='bg-orange-500 px-6 py-5'>
-                <h1 className='text-sm font-bold uppercase tracking-wide text-slate-900'>Manage Account</h1>
+                <h1 className='text-sm font-bold uppercase tracking-wide text-slate-900'>{t('manageAccount.title')}</h1>
               </div>
 
               {/* Users */}
               <div className='bg-black px-6 py-2.5'>
-                <h2 className='text-xs font-bold uppercase tracking-wide text-white'>Users</h2>
+                <h2 className='text-xs font-bold uppercase tracking-wide text-white'>{t('manageAccount.users')}</h2>
               </div>
               <div className='divide-y divide-gray-200'>
                 <div className='flex items-center justify-between px-6 py-4'>
@@ -276,7 +278,7 @@ const ManageAccount = () => {
                   </div>
                   <div className='flex items-center gap-3'>
                     <span className='px-3 py-1.5 bg-slate-900 text-white text-[10px] font-semibold uppercase tracking-wide rounded'>
-                      Default
+                      {t('manageAccount.default')}
                     </span>
                     <button onClick={handleOpenEditProfile} aria-label='Edit profile' className='text-gray-500 hover:text-gray-700'>
                       <Pencil size={16} />
@@ -287,7 +289,7 @@ const ManageAccount = () => {
 
               {/* Shipping Addresses */}
               <div className='bg-black px-6 py-2.5'>
-                <h2 className='text-xs font-bold uppercase tracking-wide text-white'>Shipping Addresses</h2>
+                <h2 className='text-xs font-bold uppercase tracking-wide text-white'>{t('manageAccount.shippingAddresses')}</h2>
               </div>
               <div className='divide-y divide-gray-200'>
                 <div className='flex items-center justify-between px-6 py-4'>
@@ -352,13 +354,13 @@ const ManageAccount = () => {
                             onClick={handleSaveEditAddress}
                             className='flex-1 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold uppercase tracking-wide rounded transition'
                           >
-                            Save Changes
+                            {t('manageAccount.saveChanges')}
                           </button>
                           <button
                             onClick={handleCancelEditAddress}
                             className='flex-1 px-4 py-2 border border-gray-300 text-gray-700 text-xs font-semibold uppercase tracking-wide rounded hover:bg-gray-50 transition'
                           >
-                            Cancel
+                            {t('manageAccount.cancel')}
                           </button>
                         </div>
                       </div>
@@ -404,7 +406,7 @@ const ManageAccount = () => {
                       className='flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold uppercase tracking-wide rounded transition'
                     >
                       <Plus size={14} />
-                      Add Address
+                      {t('manageAccount.addAddress')}
                     </button>
                   ) : (
                     <div className='border border-gray-200 rounded-lg p-4 space-y-3 max-w-md'>
@@ -455,13 +457,13 @@ const ManageAccount = () => {
                           onClick={handleAddAddress}
                           className='flex-1 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold uppercase tracking-wide rounded transition'
                         >
-                          Save Address
+                          {t('manageAccount.saveAddress')}
                         </button>
                         <button
                           onClick={() => setShowAddAddressForm(false)}
                           className='flex-1 px-4 py-2 border border-gray-300 text-gray-700 text-xs font-semibold uppercase tracking-wide rounded hover:bg-gray-50 transition'
                         >
-                          Cancel
+                          {t('manageAccount.cancel')}
                         </button>
                       </div>
                     </div>
