@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Loader, Plus, Minus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardNavbar from '../components/DashboardNavbar'
+import ImageUpload from '../components/ImageUpload'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
@@ -16,6 +17,17 @@ const OrderMisc = () => {
   
   // Orientation state
   const [orientation, setOrientation] = useState('portrait')
+
+  // Editable dimensions (inches) - defaults match the original fixed portrait size
+  const [width, setWidth] = useState(2)
+  const [height, setHeight] = useState(3.5)
+
+  // Uploaded image state
+  const [imagePreview, setImagePreview] = useState(null)
+  const [showImageUploadModal, setShowImageUploadModal] = useState(false)
+
+  // How the uploaded image is positioned within its dimensions: 'fit' | 'center'
+  const [imageFit, setImageFit] = useState('fit')
   
   // Finish config state
   const [selectedConfig, setSelectedConfig] = useState({})
@@ -46,7 +58,7 @@ const OrderMisc = () => {
         if (data.success) {
           setProduct(data.product)
           // Initialize selectedConfig with product finish config keys
-          const initialConfig = { orientation: 'portrait' }
+          const initialConfig = { orientation: 'portrait', imageFit: 'fit' }
           if (data.product.finishConfig && typeof data.product.finishConfig === 'object') {
             Object.keys(data.product.finishConfig).forEach((key) => {
               initialConfig[key] = data.product.finishConfig[key]
@@ -72,19 +84,51 @@ const OrderMisc = () => {
     }
   }, [productId])
 
-  // Dimensions based on orientation
+  // Dimensions now come from user-editable width/height state (in inches)
   const getDimensions = () => {
-    if (orientation === 'portrait') {
-      return { width: 2, height: 3.5, label: '2" x 3.5"' }
-    } else {
-      return { width: 3.5, height: 2, label: '3.5" x 2"' }
-    }
+    const w = parseFloat(width) || 0
+    const h = parseFloat(height) || 0
+    return { width: w, height: h, label: `${w}" x ${h}"` }
   }
 
-  // Handle orientation change
+  // Handle orientation change: flips the current width/height so the box actually
+  // becomes landscape/portrait, while preserving whatever custom size the user entered
   const handleOrientationChange = (newOrientation) => {
+    if (newOrientation !== orientation) {
+      const prevWidth = width
+      const prevHeight = height
+      setWidth(prevHeight)
+      setHeight(prevWidth)
+    }
     setOrientation(newOrientation)
     setSelectedConfig({ ...selectedConfig, orientation: newOrientation })
+  }
+
+  const handleImageSelect = (imageUrl) => {
+    setImagePreview(imageUrl)
+  }
+
+  const handleImageFitChange = (newFit) => {
+    setImageFit(newFit)
+    setSelectedConfig({ ...selectedConfig, imageFit: newFit })
+  }
+
+  // Scales the actual dimensions down into a bounded preview box,
+  // preserving aspect ratio, so the preview matches real proportions.
+  const MAX_PREVIEW_SIZE = 280
+  const getPreviewBoxDimensions = () => {
+    const w = parseFloat(width)
+    const h = parseFloat(height)
+
+    if (!w || !h || Number.isNaN(w) || Number.isNaN(h)) {
+      return { width: MAX_PREVIEW_SIZE, height: MAX_PREVIEW_SIZE }
+    }
+
+    const aspect = w / h
+    if (aspect >= 1) {
+      return { width: MAX_PREVIEW_SIZE, height: MAX_PREVIEW_SIZE / aspect }
+    }
+    return { width: MAX_PREVIEW_SIZE * aspect, height: MAX_PREVIEW_SIZE }
   }
 
   // Each active finish config option adds a flat surcharge to the base price:
@@ -123,9 +167,30 @@ const OrderMisc = () => {
         return
       }
 
+      if (!width || !height || parseFloat(width) <= 0 || parseFloat(height) <= 0) {
+        toast.error('Please specify valid dimensions')
+        return
+      }
+
       setAddingToCart(true)
 
       const dimensions = getDimensions()
+
+      const requestBody = {
+        wholesaleSellerId: parseInt(sellerId),
+        productId: parseInt(productId),
+        quantity: parseInt(quantity),
+        width: dimensions.width,
+        height: dimensions.height,
+        size: [orientation],
+        selectedFinishConfig: selectedConfig,
+        basePrice: getAdjustedBasePrice(),
+      }
+
+      // Add image URL instead of an uploaded file
+      if (imagePreview) {
+        requestBody.imageUrl = imagePreview
+      }
 
       const response = await fetch(`${BACKEND_URL}/api/order/add-to-cart`, {
         method: 'POST',
@@ -133,16 +198,7 @@ const OrderMisc = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          wholesaleSellerId: parseInt(sellerId),
-          productId: parseInt(productId),
-          quantity: parseInt(quantity),
-          width: dimensions.width,
-          height: dimensions.height,
-          size: [orientation],
-          selectedFinishConfig: selectedConfig,
-          basePrice: getAdjustedBasePrice(),
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       const data = await response.json()
@@ -190,6 +246,11 @@ const OrderMisc = () => {
   return (
     <div>
       <DashboardNavbar />
+      <ImageUpload
+        isOpen={showImageUploadModal}
+        onClose={() => setShowImageUploadModal(false)}
+        onSelectImage={handleImageSelect}
+      />
       <div className='pt-34 md:pt-30 overflow-x-hidden min-h-screen'>
         {/* Grid Background */}
         <div className='relative bg-[#f0f0f0] min-h-screen'>
@@ -213,12 +274,12 @@ const OrderMisc = () => {
               {/* Main Content - single centered column */}
               <div className='max-w-4xl mx-auto'>
                 {/* Safe Zone / Dimension Display */}
-                <div className='bg-white rounded-lg p-8 border border-gray-200 flex flex-col items-center'>
+                <div className='p-8 flex flex-col items-center'>
                   {/* Title */}
                   <h3 className='text-center text-gray-900 font-semibold text-sm tracking-wide mb-4'>▼ TOP OF IMAGE ▼</h3>
 
                   {/* Top width measurement */}
-                  <div className='flex items-center gap-2' style={{ width: orientation === 'portrait' ? '160px' : '280px' }}>
+                  <div className='flex items-center gap-2' style={{ width: `${getPreviewBoxDimensions().width}px` }}>
                     <span className='text-gray-400 text-xs'>&larr;</span>
                     <div className='flex-1 h-px bg-gray-400' />
                     <span className='text-gray-500 text-xs px-1 whitespace-nowrap'>{dimensions.width}&quot;</span>
@@ -231,7 +292,7 @@ const OrderMisc = () => {
                     {/* Left height measurement */}
                     <div
                       className='flex flex-col items-center gap-1'
-                      style={{ height: orientation === 'portrait' ? '280px' : '160px' }}
+                      style={{ height: `${getPreviewBoxDimensions().height}px` }}
                     >
                       <span className='text-gray-400 text-xs'>&uarr;</span>
                       <div className='flex-1 w-px bg-gray-400' />
@@ -258,19 +319,34 @@ const OrderMisc = () => {
 
                     {/* Product Display Box */}
                     <div
-                      className='relative transition-all duration-500 ease-out border border-gray-400 bg-white shrink-0'
+                      onClick={!imagePreview ? () => setShowImageUploadModal(true) : undefined}
+                      className={`relative transition-all duration-500 ease-out border border-gray-400 bg-white shrink-0 overflow-hidden ${
+                        !imagePreview ? 'cursor-pointer hover:bg-gray-50' : ''
+                      }`}
                       style={{
-                        width: orientation === 'portrait' ? '160px' : '280px',
-                        height: orientation === 'portrait' ? '280px' : '160px',
+                        width: `${getPreviewBoxDimensions().width}px`,
+                        height: `${getPreviewBoxDimensions().height}px`,
                       }}
                     >
-                      <div className='absolute inset-3 border-2 border-blue-700 border-dashed' />
+                      {imagePreview ? (
+                        <img
+                          src={imagePreview}
+                          alt='Uploaded artwork'
+                          className={imageFit === 'fit' ? 'w-full h-full object-contain' : 'w-full h-full'}
+                          style={imageFit === 'center' ? { objectFit: 'none', objectPosition: 'center' } : undefined}
+                        />
+                      ) : (
+                        <div className='absolute inset-0 flex items-center justify-center px-4'>
+                          <p className='text-gray-400 text-xs text-center tracking-wide'>CLICK TO SELECT AN IMAGE</p>
+                        </div>
+                      )}
+                      <div className='absolute inset-3 border-[1.5px] border-blue-700 border-dashed pointer-events-none' />
                     </div>
 
                     {/* Right height measurement */}
                     <div
                       className='flex flex-col items-center gap-1'
-                      style={{ height: orientation === 'portrait' ? '280px' : '160px' }}
+                      style={{ height: `${getPreviewBoxDimensions().height}px` }}
                     >
                       <span className='text-gray-400 text-xs'>&uarr;</span>
                       <div className='flex-1 w-px bg-gray-400' />
@@ -286,7 +362,7 @@ const OrderMisc = () => {
                   </div>
 
                   {/* Bottom width measurement */}
-                  <div className='flex items-center gap-2 mb-4' style={{ width: orientation === 'portrait' ? '160px' : '280px' }}>
+                  <div className='flex items-center gap-2 mb-4' style={{ width: `${getPreviewBoxDimensions().width}px` }}>
                     <span className='text-gray-400 text-xs'>&larr;</span>
                     <div className='flex-1 h-px bg-gray-400' />
                     <span className='text-gray-500 text-xs px-1 whitespace-nowrap'>{dimensions.width}&quot;</span>
@@ -295,21 +371,90 @@ const OrderMisc = () => {
                   </div>
 
                   {/* Bottom Label */}
-                  <p className='text-center text-gray-600 text-sm font-medium'>Front Side</p>
+                  <p className='text-center text-gray-600 text-sm font-medium mb-3'>Front Side</p>
+
+                  {/* Image fit: Center / Fit segmented toggle */}
+                  {imagePreview && (
+                    <div className='inline-flex rounded-lg overflow-hidden border-2 border-green-600'>
+                      <button
+                        type='button'
+                        onClick={() => handleImageFitChange('center')}
+                        className={`px-6 py-2 text-sm font-bold uppercase tracking-wide transition ${
+                          imageFit === 'center' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 hover:bg-green-100'
+                        }`}
+                      >
+                        Center
+                      </button>
+                      <button
+                        type='button'
+                        onClick={() => handleImageFitChange('fit')}
+                        className={`px-6 py-2 text-sm font-bold uppercase tracking-wide transition ${
+                          imageFit === 'fit' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 hover:bg-green-100'
+                        }`}
+                      >
+                        Fit
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Info / Size / Orientation / Config Boxes Row */}
                 <div className='relative flex gap-4 mt-4 flex-wrap'>
-                  {/* Images (dummy, static) */}
-                  <div className='flex-1 min-w-[140px] flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white'>
+                  {/* Images - click to open the image library and select/change the artwork */}
+                  <button
+                    type='button'
+                    onClick={() => setShowImageUploadModal(true)}
+                    className='flex-1 min-w-[140px] flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
+                  >
                     <span className='text-gray-600 font-medium text-sm tracking-wide'>IMAGES</span>
-                    <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm'>1</span>
-                  </div>
+                    <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm'>{imagePreview ? '1' : '0'}</span>
+                  </button>
 
-                  {/* Size (derived from orientation, display only) */}
-                  <div className='flex-1 min-w-[140px] flex items-center justify-between border border-green-600 rounded-lg px-4 py-3 bg-white'>
-                    <span className='text-green-600 font-medium text-sm tracking-wide'>SIZE</span>
-                    <span className='px-3 py-1 bg-green-600 text-white rounded font-bold text-sm'>{dimensions.label}</span>
+                  {/* Size - click to open editable width/height inputs */}
+                  <div className='relative flex-1 min-w-[140px]'>
+                    <button
+                      type='button'
+                      onClick={() => setOpenPopup(openPopup === 'size' ? null : 'size')}
+                      className='w-full flex items-center justify-between border border-green-600 rounded-lg px-4 py-3 bg-white hover:bg-green-50 transition'
+                    >
+                      <span className='text-green-600 font-medium text-sm tracking-wide'>SIZE</span>
+                      <span className='px-3 py-1 bg-green-600 text-white rounded font-bold text-sm'>{dimensions.label}</span>
+                    </button>
+
+                    {/* Editable size popup */}
+                    {openPopup === 'size' && (
+                      <div className='absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
+                        <div className='px-4 py-2 border-b border-gray-200 text-center'>
+                          <span className='text-sm text-gray-700'>Size (inches)</span>
+                        </div>
+                        <div className='px-4 py-3 space-y-3'>
+                          <div className='flex items-center gap-2'>
+                            <label className='text-sm text-gray-600 w-14'>width:</label>
+                            <input
+                              type='number'
+                              min='0'
+                              step='0.1'
+                              value={width}
+                              onChange={(e) => setWidth(e.target.value)}
+                              className='flex-1 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
+                            />
+                            <span className='text-xs text-gray-500'>in</span>
+                          </div>
+                          <div className='flex items-center gap-2'>
+                            <label className='text-sm text-gray-600 w-14'>height:</label>
+                            <input
+                              type='number'
+                              min='0'
+                              step='0.1'
+                              value={height}
+                              onChange={(e) => setHeight(e.target.value)}
+                              className='flex-1 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
+                            />
+                            <span className='text-xs text-gray-500'>in</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Landscape / Portrait toggle */}

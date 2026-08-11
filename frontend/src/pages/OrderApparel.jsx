@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Loader, Plus, Minus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import Draggable from 'react-draggable'
 import DashboardNavbar from '../components/DashboardNavbar'
+import ImageUpload from '../components/ImageUpload'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
@@ -26,9 +28,17 @@ const OrderApparel = () => {
 
   // Which popup is currently open: null | 'sizes' | 'color'
   const [openPopup, setOpenPopup] = useState(null)
-  
+
   // Loading add to cart
   const [addingToCart, setAddingToCart] = useState(false)
+
+  // Uploaded front image state
+  const [imagePreview, setImagePreview] = useState(null)
+  const [showImageUploadModal, setShowImageUploadModal] = useState(false)
+
+  // Draggable position of the image inside the fixed upload box
+  const [imagePosition, setImagePosition] = useState({ x: 0, y: 0 })
+  const imageRef = useRef(null)
 
   // Fetch product details
   useEffect(() => {
@@ -107,6 +117,11 @@ const OrderApparel = () => {
     )
   }
 
+  const handleImageSelect = (imageUrl) => {
+    setImagePreview(imageUrl)
+    setImagePosition({ x: 0, y: 0 })
+  }
+
   // Handle add to cart
   const handleAddToCart = async () => {
     try {
@@ -131,23 +146,29 @@ const OrderApparel = () => {
 
       setAddingToCart(true)
 
+      const requestBody = {
+        wholesaleSellerId: parseInt(sellerId),
+        productId: parseInt(productId),
+        quantity: parseInt(quantity),
+        width: undefined,
+        height: undefined,
+        size: selectedSizes,
+        selectedFinishConfig: {
+          color: selectedColor,
+        },
+      }
+
+      if (imagePreview) {
+        requestBody.imageUrl = imagePreview
+      }
+
       const response = await fetch(`${BACKEND_URL}/api/order/add-to-cart`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          wholesaleSellerId: parseInt(sellerId),
-          productId: parseInt(productId),
-          quantity: parseInt(quantity),
-          width: undefined,
-          height: undefined,
-          size: selectedSizes,
-          selectedFinishConfig: {
-            color: selectedColor,
-          },
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       const data = await response.json()
@@ -193,6 +214,11 @@ const OrderApparel = () => {
   return (
     <div>
       <DashboardNavbar />
+      <ImageUpload
+        isOpen={showImageUploadModal}
+        onClose={() => setShowImageUploadModal(false)}
+        onSelectImage={handleImageSelect}
+      />
       <div className='pt-34 md:pt-30 overflow-x-hidden min-h-screen'>
         {/* Grid Background */}
         <div className='relative bg-[#f0f0f0] min-h-screen'>
@@ -235,16 +261,39 @@ const OrderApparel = () => {
                       className='h-full object-contain'
                     />
 
-                    {/* Upload Box Overlay (dummy - no upload functionality) */}
+                    {/* Upload Box Overlay */}
                     <div className='absolute inset-0 flex items-center justify-center'>
-                      <div className='border-2 border-dashed border-gray-400 rounded-lg bg-gray-100/80 cursor-pointer hover:bg-gray-200/80 transition flex flex-col items-center justify-center gap-2 w-36 h-36'>
-                        <span className='w-6 h-6 rounded-full border-2 border-gray-500 flex items-center justify-center mb-1'>
-                          <Plus size={12} className='text-gray-500' />
-                        </span>
-                        <p className='text-center text-gray-500 font-bold text-sm tracking-wide'>CLICK HERE</p>
-                        <p className='text-center text-gray-500 font-bold text-sm tracking-wide'>TO SELECT</p>
-                        <p className='text-center text-gray-500 font-bold text-sm tracking-wide'>FRONT IMAGE</p>
-                      </div>
+                      {!imagePreview ? (
+                        <div
+                          onClick={() => setShowImageUploadModal(true)}
+                          className='border-2 border-dashed border-gray-400 rounded-lg bg-gray-100/80 cursor-pointer hover:bg-gray-200/80 transition flex flex-col items-center justify-center gap-2 w-36 h-36'
+                        >
+                          <span className='w-6 h-6 rounded-full border-2 border-gray-500 flex items-center justify-center mb-1'>
+                            <Plus size={12} className='text-gray-500' />
+                          </span>
+                          <p className='text-center text-gray-500 font-bold text-sm tracking-wide'>CLICK HERE</p>
+                          <p className='text-center text-gray-500 font-bold text-sm tracking-wide'>TO SELECT</p>
+                          <p className='text-center text-gray-500 font-bold text-sm tracking-wide'>FRONT IMAGE</p>
+                        </div>
+                      ) : (
+                        <div className='relative border-2 border-dashed border-gray-400 rounded-lg bg-white/40 overflow-hidden w-36 h-36'>
+                          <Draggable
+                            nodeRef={imageRef}
+                            bounds='parent'
+                            position={imagePosition}
+                            onDrag={(e, data) => setImagePosition({ x: data.x, y: data.y })}
+                            onStop={(e, data) => setImagePosition({ x: data.x, y: data.y })}
+                          >
+                            <img
+                              ref={imageRef}
+                              src={imagePreview}
+                              alt='Front design'
+                              draggable={false}
+                              className='absolute top-0 left-0 max-w-full max-h-full cursor-move select-none'
+                            />
+                          </Draggable>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -254,8 +303,18 @@ const OrderApparel = () => {
                   </p>
                 </div>
 
-                {/* Sizes / Color Boxes Row */}
+                {/* Sizes / Color / Images Boxes Row */}
                 <div className='relative flex gap-4 mt-4'>
+                  {/* Images - click to open the image library and select/change the artwork */}
+                  <button
+                    type='button'
+                    onClick={() => setShowImageUploadModal(true)}
+                    className='flex-1 flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
+                  >
+                    <span className='text-gray-600 font-medium text-sm tracking-wide'>IMAGES</span>
+                    <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm'>{imagePreview ? '1' : '0'}</span>
+                  </button>
+
                   {/* Sizes - click to open the size selection popup */}
                   <div className='relative flex-1'>
                     <button

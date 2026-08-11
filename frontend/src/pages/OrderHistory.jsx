@@ -10,8 +10,20 @@ import Footer from '../components/Footer'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+// Pulls the current language's value out of a { en, fr } field. Falls back to
+// English, then to a plain string if the field isn't localized at all (keeps
+// this working for any older product data saved before translations were added).
+const getLocalizedField = (field, language, fallback) => {
+  if (field === null || field === undefined) return fallback
+  if (typeof field === 'object' && !Array.isArray(field)) {
+    return field[language] ?? field.en ?? fallback
+  }
+  return field
+}
+
 const OrderHistory = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const language = i18n.language === 'fr' ? 'fr' : 'en'
   const navigate = useNavigate()
   const receiptRef = useRef()
   const [orders, setOrders] = useState([])
@@ -101,7 +113,7 @@ const OrderHistory = () => {
       // Search by product name
       if (searchProductName) {
         const hasMatchingProduct = order.orderItems.some((item) =>
-          item.product.name.toLowerCase().includes(searchProductName.toLowerCase())
+          getLocalizedField(item.product?.name, language, '').toLowerCase().includes(searchProductName.toLowerCase())
         )
         if (!hasMatchingProduct) return false
       }
@@ -156,6 +168,25 @@ const OrderHistory = () => {
       default:
         return 'bg-gray-100 text-gray-800'
     }
+  }
+
+  const formatFinishConfig = (config) => {
+    if (!config || typeof config !== 'object') return 'Standard'
+
+    return Object.entries(config)
+      .map(([key, value]) => {
+        // Capitalize the key (convert camelCase/snake_case to Title Case)
+        const formattedKey = key
+          .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+          .replace(/_/g, ' ') // Replace underscores with spaces
+          .trim()
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ')
+
+        return `${formattedKey}: ${value}`
+      })
+      .join(', ')
   }
 
   const formatSizeDisplay = (item) => {
@@ -320,7 +351,7 @@ const OrderHistory = () => {
               <tbody>
                 ${order.orderItems.map((item) => `
                   <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 8px;">${item.product?.name || ''}</td>
+                    <td style="padding: 8px;">${getLocalizedField(item.product?.name, language, '')}</td>
                     <td style="text-align: center; padding: 8px;">${item.quantity}</td>
                     <td style="text-align: right; padding: 8px;">$${(item.totalPrice / item.quantity).toFixed(2)}</td>
                     <td style="text-align: right; padding: 8px;">$${item.totalPrice.toFixed(2)}</td>
@@ -623,7 +654,7 @@ const OrderHistory = () => {
                 <div className='bg-white rounded-lg shadow divide-y divide-gray-200 overflow-hidden'>
                   {filteredOrders.map((order) => {
                     const thumbnails = order.orderItems
-                      .map((item) => item.product?.images?.[0]?.url)
+                      .map((item) => item.images?.[0]?.url)
                       .filter(Boolean)
                     const visibleThumbnails = thumbnails.slice(0, 4)
                     const extraThumbnailCount = thumbnails.length - visibleThumbnails.length
@@ -665,7 +696,7 @@ const OrderHistory = () => {
 
                           {/* Price */}
                           <div className='w-32 shrink-0 text-sm text-gray-900'>
-                            ${order.total.toFixed(2)} (CAD)
+                            ${order.total.toFixed(2)}
                           </div>
 
                           <div className='w-px self-stretch bg-gray-200' />
@@ -718,23 +749,58 @@ const OrderHistory = () => {
                             <h4 className='text-lg font-semibold text-gray-900 mb-4'>Items</h4>
                             <div className='space-y-4'>
                               {order.orderItems.map((item) => (
-                                <div key={item.id} className='bg-white rounded-lg p-4 flex gap-4'>
-                                  <div className='flex-1'>
-                                    <h5 className='font-semibold text-gray-900'>{item.product.name}</h5>
-                                    <p className='text-gray-600 text-sm mt-1'>{item.product.materials}</p>
-                                    <div className='mt-2 text-sm text-gray-600'>
-                                      <p>Quantity: {item.quantity}</p>
-                                      <p>Size: {formatSizeDisplay(item)}</p>
+                                <div key={item.id} className='bg-white rounded-lg p-4'>
+                                  <div className='flex gap-4'>
+                                    <div className='flex-1'>
+                                      <h5 className='font-semibold text-gray-900'>{getLocalizedField(item.product?.name, language, '')}</h5>
+                                      <p className='text-gray-600 text-sm mt-1'>{getLocalizedField(item.product?.materials, language, '')}</p>
+                                      <div className='mt-2 text-sm text-gray-600'>
+                                        <p>Quantity: {item.quantity}</p>
+                                        <p>Size: {formatSizeDisplay(item)}</p>
+                                        <p>Options: {formatFinishConfig(item.selectedFinishConfig)}</p>
+                                      </div>
+                                    </div>
+                                    <div className='text-right'>
+                                      <p className='text-lg font-semibold text-gray-900'>
+                                        ${item.totalPrice.toFixed(2)}
+                                      </p>
+                                      <p className='text-gray-600 text-sm'>
+                                        ${(item.totalPrice / item.quantity).toFixed(2)} each
+                                      </p>
                                     </div>
                                   </div>
-                                  <div className='text-right'>
-                                    <p className='text-lg font-semibold text-gray-900'>
-                                      ${item.totalPrice.toFixed(2)}
-                                    </p>
-                                    <p className='text-gray-600 text-sm'>
-                                      ${(item.totalPrice / item.quantity).toFixed(2)} each
-                                    </p>
-                                  </div>
+
+                                  {/* Order item images - duplicate URLs (e.g. rigid products) are
+                                      grouped and shown once with a "x N" badge, matching Cart.jsx */}
+                                  {item.images && item.images.length > 0 && (
+                                    <div className='mt-4'>
+                                      <div className='flex gap-3 flex-wrap'>
+                                        {Object.values(
+                                          item.images.reduce((acc, image) => {
+                                            const key = image.url
+                                            if (!acc[key]) {
+                                              acc[key] = { url: image.url, count: 0 }
+                                            }
+                                            acc[key].count += 1
+                                            return acc
+                                          }, {})
+                                        ).map((groupedImage, index) => (
+                                          <div key={index} className='relative'>
+                                            <img
+                                              src={groupedImage.url}
+                                              alt={`${getLocalizedField(item.product?.name, language, 'Product')} - Image ${index + 1}`}
+                                              className='h-28'
+                                            />
+                                            {groupedImage.count > 1 && (
+                                              <span className='absolute bottom-1 right-1 bg-black/70 text-white text-xs font-semibold px-1.5 py-0.5 rounded'>
+                                                x {groupedImage.count}
+                                              </span>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>

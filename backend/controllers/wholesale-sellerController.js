@@ -13,33 +13,42 @@ const createToken = (id) => {
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Function to send reset password email
-const sendResetPasswordEmail = async (sellerEmail, resetToken) => {
+const sendResetPasswordEmail = async (sellerEmail, resetToken, lang = 'en') => {
   try {
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-    
+    const language = lang === 'fr' ? 'fr' : 'en';
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(resetToken)}&lang=${language}`;
+    const content = language === 'fr'
+      ? {
+          subject: 'Réinitialisez votre mot de passe - Trading & Printing Coop',
+          title: 'Demande de réinitialisation du mot de passe',
+          intro: 'Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous pour continuer :',
+          button: 'Réinitialiser le mot de passe',
+          expiry: "Ce lien expirera dans 10 minutes. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail.",
+          regards: 'Cordialement,',
+        }
+      : {
+          subject: 'Reset Your Password - Trading & Printing Coop',
+          title: 'Password Reset Request',
+          intro: 'You have requested to reset your password. Click the link below to proceed:',
+          button: 'Reset Password',
+          expiry: "This link will expire in 10 minutes. If you didn't request this, please ignore this email.",
+          regards: 'Best regards,',
+        };
+
     const response = await resend.emails.send({
       from: 'noreply@trading.printing.coop',
       to: sellerEmail,
-      subject: 'Reset Your Password - Trading & Printing Coop',
+      subject: content.subject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Password Reset Request</h2>
-          <p style="color: #666; font-size: 16px;">
-            You have requested to reset your password. Click the link below to proceed:
-          </p>
+          <h2 style="color: #333;">${content.title}</h2>
+          <p style="color: #666; font-size: 16px;">${content.intro}</p>
           <div style="margin: 30px 0;">
-            <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              Reset Password
-            </a>
+            <a href="${resetLink}" style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">${content.button}</a>
           </div>
-          <p style="color: #999; font-size: 14px;">
-            This link will expire in 10 minutes. If you didn't request this, please ignore this email.
-          </p>
+          <p style="color: #999; font-size: 14px;">${content.expiry}</p>
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-            <p style="color: #999; font-size: 14px;">
-              Best regards,<br/>
-              <strong>Trading & Printing Coop Team</strong>
-            </p>
+            <p style="color: #999; font-size: 14px;">${content.regards}<br/><strong>Trading & Printing Coop Team</strong></p>
           </div>
         </div>
       `,
@@ -174,7 +183,7 @@ const loginWholesaleSeller = async (req, res) => {
 // Route for wholesale seller forgot password - sends reset link
 const forgotPasswordSeller = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, lang = 'en' } = req.body;
 
     // Check if seller exists
     const seller = await prisma.wholesaleSeller.findUnique({
@@ -204,7 +213,7 @@ const forgotPasswordSeller = async (req, res) => {
     });
 
     // Send reset password email
-    const emailSent = await sendResetPasswordEmail(email, resetToken);
+    const emailSent = await sendResetPasswordEmail(email, resetToken, lang);
 
     if (emailSent) {
       res.json({ success: true, message: 'Reset password link sent to your email' });

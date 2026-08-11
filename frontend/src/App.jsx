@@ -18,6 +18,8 @@ import OrderRigid from "./pages/OrderRigid"
 import OrderAdhesive from "./pages/OrderAdhesive"
 import OrderMisc from "./pages/OrderMisc"
 import PlaceOrder from "./pages/PlaceOrder"
+import Payment from "./pages/Payment"
+import OrderConfirm from "./pages/OrderConfirm"
 import ManagePayments from "./pages/ManagePayments"
 import OrderMagnet from "./pages/OrderMagnet"
 import OrderApparel from "./pages/OrderApparel"
@@ -25,6 +27,7 @@ import OrderDTF from "./pages/OrderDTF"
 import DashboardFlag from "./pages/DashboardFlag"
 import OrderFlag from "./pages/OrderFlag"
 import ProductListing from "./pages/ProductListing"
+import ImageZone from "./pages/ImageZone"
 
 function App() {
 
@@ -68,6 +71,9 @@ function App() {
         <Route path="/order-history" element={<OrderHistory />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/place-order" element={<PlaceOrder />} />
+        <Route path="/payment" element={<Payment />} />
+        <Route path="/order-confirm" element={<OrderConfirm />} />
+        <Route path="/image-zone" element={<ImageZone />} />
         
         <Route path="/order/banner/:productId" element={<OrderBanner />} />
         <Route path="/order/rigid/:productId" element={<OrderRigid />} />

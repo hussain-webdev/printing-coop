@@ -13,12 +13,12 @@ i18n
       en: { translation: en },
       fr: { translation: fr },
     },
-    fallbackLng: 'en',
+    fallbackLng: 'fr',
     supportedLngs: ['en', 'fr'],
 
     detection: {
-      // Check localStorage first (so a manual switch sticks), then browser language
-      order: ['localStorage', 'navigator'],
+      // Check localStorage first (so a manual switch sticks), use French as fallback
+      order: ['localStorage'],
       caches: ['localStorage'],
       lookupLocalStorage: 'i18nextLng',
     },

@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { X, Mail, Loader } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
+import LanguageSwitcher from './LanguageSwitcher'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const SellerForgotPasswordSidebar = ({ isOpen, onClose, onReturnToLogin }) => {
+  const { t, i18n } = useTranslation()
   const [email, setEmail] = useState('')
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
@@ -20,9 +23,9 @@ const SellerForgotPasswordSidebar = ({ isOpen, onClose, onReturnToLogin }) => {
   const validateForm = () => {
     const newErrors = {}
     if (!email) {
-      newErrors.email = 'Email is required'
+      newErrors.email = t('auth.emailRequired')
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Please enter a valid email'
+      newErrors.email = t('auth.validEmail')
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -43,19 +46,22 @@ const SellerForgotPasswordSidebar = ({ isOpen, onClose, onReturnToLogin }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({
+          email,
+          lang: i18n.language === 'fr' ? 'fr' : 'en',
+        })
       })
 
       const data = await response.json()
 
       if (data.success) {
-        toast.success('Reset link sent to your email!')
+        toast.success(t('auth.resetSuccess'))
         setEmailSent(true)
       } else {
-        toast.error(data.message || 'Failed to send reset link. Please try again.')
+        toast.error(data.message || t('auth.resetFailed'))
       }
     } catch (error) {
-      toast.error('Connection error. Please check your backend server.')
+      toast.error(t('auth.connectionError'))
       console.error('Forgot password error:', error)
     } finally {
       setLoading(false)
@@ -77,6 +83,7 @@ const SellerForgotPasswordSidebar = ({ isOpen, onClose, onReturnToLogin }) => {
       <div className={`fixed right-0 top-0 h-screen w-80 bg-white z-50 shadow-lg transition-transform duration-300 ease-in-out overflow-y-auto ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* Close Button */}
         <div className='flex justify-end p-6'>
+          <LanguageSwitcher />
           <button
             onClick={onClose}
             className='p-2 hover:bg-gray-100 rounded-lg transition'
@@ -87,19 +94,19 @@ const SellerForgotPasswordSidebar = ({ isOpen, onClose, onReturnToLogin }) => {
 
         {/* Form Content */}
         <div className='px-8 pb-8'>
-          <h1 className='text-4xl font-bold mb-8 text-black'>Reset Password</h1>
+          <h1 className='text-4xl font-bold mb-8 text-black'>{t('auth.reset')}</h1>
 
           {!emailSent ? (
             <form onSubmit={handleSubmit} className='space-y-6'>
               {/* Email Input */}
               <div>
-                <label className='block text-black font-semibold mb-3'>Email</label>
+                <label className='block text-black font-semibold mb-3'>{t('auth.email')}</label>
                 <input
                   type='email'
                   value={email}
                   onChange={handleChange}
                   className='w-full pb-2 border-b-2 border-gray-300 focus:border-green-500 focus:outline-none text-black'
-                  placeholder='Enter your email'
+                  placeholder={t('auth.enterEmail')}
                 />
                 {errors.email && (
                   <p className='text-red-500 text-sm mt-2'>{errors.email}</p>
@@ -116,10 +123,10 @@ const SellerForgotPasswordSidebar = ({ isOpen, onClose, onReturnToLogin }) => {
                   {loading ? (
                     <>
                       <Loader size={18} className='animate-spin' />
-                      Sending...
+                      {t('auth.sending')}
                     </>
                   ) : (
-                    'Reset'
+                    t('auth.reset')
                   )}
                 </button>
               </div>
@@ -131,7 +138,7 @@ const SellerForgotPasswordSidebar = ({ isOpen, onClose, onReturnToLogin }) => {
                   onClick={handleReset}
                   className='text-blue-500 hover:text-blue-700 underline font-semibold'
                 >
-                  Return to login
+                  {t('auth.returnToLogin')}
                 </button>
               </div>
             </form>
@@ -139,13 +146,13 @@ const SellerForgotPasswordSidebar = ({ isOpen, onClose, onReturnToLogin }) => {
             <div className='text-center py-8'>
               <Mail size={48} className='text-green-500 mx-auto mb-4' />
               <p className='text-gray-700 mb-6'>
-                Reset link sent to your email. Please check your inbox and follow the instructions.
+                {t('auth.resetEmailSent')}
               </p>
               <button
                 onClick={handleReset}
                 className='text-blue-500 hover:text-blue-700 underline font-semibold'
               >
-                Return to login
+                {t('auth.returnToLogin')}
               </button>
             </div>
           )}

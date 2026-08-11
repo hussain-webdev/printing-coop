@@ -1,5 +1,56 @@
 import { getRedisClient } from '../config/redis.js';
 import prisma from '../config/prisma.js';
+import { uploadToS3 } from '../config/s3.js';
+import { createStripePaymentIntent, confirmStripePayment } from '../config/stripe.js';
+import { chargeAuthorizeNet } from '../config/authorizeNet.js';
+import { Resend } from 'resend';
+import fs from 'fs';
+
+// Initialize Resend client
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Helper function to parse JSON safely
+const parseJSON = (value) => {
+  try {
+    if (typeof value === 'string') {
+      return JSON.parse(value);
+    }
+    return value;
+  } catch (e) {
+    return null;
+  }
+};
+
+// Each active finish config option adds a flat surcharge to a product's base price.
+// Mirrors the frontend calculation in OrderBanner.jsx (getConfigSurcharge):
+// - boolean options add the surcharge only when set to true
+// - other options add the surcharge whenever they hold a non-empty value
+// This is computed server-side (never trusting a price sent by the client) so it
+// can't be tampered with, and is the single source of truth used everywhere a
+// cart/order item price is calculated.
+const CONFIG_SURCHARGE = 2.5;
+
+const calculateItemPrice = (product, selectedFinishConfig) => {
+  if (!product?.finishConfig || typeof product.finishConfig !== 'object') {
+    return product.basePrice;
+  }
+
+  const config = parseJSON(selectedFinishConfig) || selectedFinishConfig || {};
+
+  const surcharge = Object.entries(product.finishConfig).reduce((total, [key, originalValue]) => {
+    const currentValue = config[key] !== undefined ? config[key] : originalValue;
+    const isBoolean = typeof originalValue === 'boolean';
+
+    if (isBoolean) {
+      return currentValue === true ? total + CONFIG_SURCHARGE : total;
+    }
+
+    const hasValue = currentValue !== '' && currentValue !== null && currentValue !== undefined;
+    return hasValue ? total + CONFIG_SURCHARGE : total;
+  }, 0);
+
+  return product.basePrice + surcharge;
+};
 
 // Generate unique order number
 const generateOrderNumber = () => {
@@ -8,26 +59,139 @@ const generateOrderNumber = () => {
   return `ORD-${timestamp}-${random}`;
 };
 
+// Function to send order confirmation email
+const sendOrderConfirmationEmail = async (sellerEmail, sellerName, order) => {
+  try {
+    const itemsHTML = order.orderItems
+      .map((item) => `
+        <tr style="border-bottom: 1px solid #ddd;">
+          <td style="padding: 12px; text-align: left;">${item.product?.name || 'Product'}</td>
+          <td style="padding: 12px; text-align: center;">${item.quantity}</td>
+          <td style="padding: 12px; text-align: right;">$${item.totalPrice?.toFixed(2) || '0.00'}</td>
+        </tr>
+      `)
+      .join('');
+
+    const response = await resend.emails.send({
+      from: 'noreply@trading.printing.coop',
+      to: sellerEmail,
+      subject: `Order Confirmation - ${order.orderNumber}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #333;">Order Confirmation</h2>
+          <p style="color: #666; font-size: 16px;">Hi ${sellerName},</p>
+          <p style="color: #666; font-size: 16px;">
+            Thank you for your order! We have received your payment and your order is now being processed.
+          </p>
+          
+          <div style="margin: 30px 0; background-color: #f5f5f5; padding: 20px; border-radius: 5px;">
+            <h3 style="color: #333; margin-top: 0;">Order Details</h3>
+            <p><strong>Order Number:</strong> ${order.orderNumber}</p>
+            <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
+            <p><strong>Payment Method:</strong> ${order.paymentMethod || 'PayPal'}</p>
+            <p><strong>Payment Status:</strong> <span style="color: #28a745; font-weight: bold;">Paid</span></p>
+          </div>
+
+          <div style="margin: 30px 0;">
+            <h3 style="color: #333;">Items Ordered</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
+                  <th style="padding: 12px; text-align: left;">Product</th>
+                  <th style="padding: 12px; text-align: center;">Quantity</th>
+                  <th style="padding: 12px; text-align: right;">Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${itemsHTML}
+              </tbody>
+            </table>
+          </div>
+
+          <div style="margin: 30px 0; background-color: #f5f5f5; padding: 20px; border-radius: 5px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span>Subtotal:</span>
+              <span>$${order.subtotal?.toFixed(2) || '0.00'}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+              <span>Shipping:</span>
+              <span>$${order.shippingCost?.toFixed(2) || '0.00'}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; border-top: 1px solid #ddd; padding-top: 10px;">
+              <span>Total:</span>
+              <span>$${order.total?.toFixed(2) || '0.00'}</span>
+            </div>
+          </div>
+
+          <div style="margin: 30px 0;">
+            <h3 style="color: #333;">Shipping Address</h3>
+            <p style="color: #666;">
+              ${order.shippingAddress?.name || ''}<br/>
+              ${order.shippingAddress?.address || ''}<br/>
+              ${order.shippingAddress?.city || ''}, ${order.shippingAddress?.state || ''} ${order.shippingAddress?.zipcode || ''}<br/>
+              ${order.shippingAddress?.country || ''}
+            </p>
+          </div>
+
+          <div style="margin: 30px 0; padding: 20px; background-color: #e8f4f8; border-radius: 5px;">
+            <p style="color: #333; margin: 0;">
+              <strong>What's Next?</strong><br/>
+              Your order is being prepared for shipment. You will receive a shipping notification with tracking information once your order ships.
+            </p>
+          </div>
+
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+            <p style="color: #999; font-size: 14px;">
+              If you have any questions about your order, please contact us at support@trading.printing.coop<br/>
+              <strong>Trading & Printing Coop Team</strong>
+            </p>
+          </div>
+        </div>
+      `,
+    });
+
+    if (response.error) {
+      console.error('[v0] Resend API error sending order confirmation:', response.error);
+      return false;
+    } else {
+      console.log('[v0] Order confirmation email sent successfully to:', sellerEmail, 'Order:', order.orderNumber);
+      return true;
+    }
+  } catch (error) {
+    console.error('[v0] Error sending order confirmation email:', error.message);
+    return false;
+  }
+};
+
 // Add product to cart
 const addToCart = async (req, res) => {
   try {
-    const { wholesaleSellerId, productId, quantity, width, height, size, selectedFinishConfig } = req.body;
+    const { wholesaleSellerId, productId, quantity, width, height, size, selectedFinishConfig, imageUrl, images: imageUrls } = req.body;
 
     // Validate required fields
-    if (!wholesaleSellerId || !productId || !quantity) {
+    if (!wholesaleSellerId || !productId || quantity === undefined) {
       return res.json({
         success: false,
         message: 'wholesaleSellerId, productId, and quantity are required',
       });
     }
 
-    // Validate quantity
-    if (typeof quantity !== 'number' || quantity <= 0) {
+    // Parse and validate numeric fields
+    const parsedQuantity = Number(quantity);
+    if (Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
       return res.json({
         success: false,
         message: 'quantity must be a positive number',
       });
     }
+
+    // Parse optional numeric fields
+    const parsedWidth = width !== undefined ? parseFloat(width) : undefined;
+    const parsedHeight = height !== undefined ? parseFloat(height) : undefined;
+    
+    // Parse optional JSON fields
+    const parsedSize = parseJSON(size);
+    const parsedFinishConfig = parseJSON(selectedFinishConfig);
 
     // Check if wholesaleSeller exists
     const seller = await prisma.wholesaleSeller.findUnique({
@@ -53,6 +217,24 @@ const addToCart = async (req, res) => {
       });
     }
 
+    // Handle images - supports a plural images[] array (multi-image products like
+    // OrderRigid, where the same image URL may repeat once per grid cell it fills)
+    // as well as the original singular imageUrl (single-image products)
+    let images = [];
+    if (Array.isArray(imageUrls) && imageUrls.length > 0) {
+      images = imageUrls
+        .filter((url) => typeof url === 'string' && url.trim() !== '')
+        .map((url) => ({ url, uploadedAt: new Date() }));
+      console.log('[v0] Using selected image URLs:', images.length);
+    } else if (imageUrl) {
+      // Image URL from ImageZone selection
+      images.push({
+        url: imageUrl,
+        uploadedAt: new Date(),
+      });
+      console.log('[v0] Using selected image URL:', imageUrl);
+    }
+
     // Check if item already exists in cart
     const existingCartItem = await prisma.cartItem.findUnique({
       where: {
@@ -67,14 +249,19 @@ const addToCart = async (req, res) => {
 
     if (existingCartItem) {
       // Update quantity and customization if item already exists
+      const updatedImages = images.length > 0 
+        ? [...(existingCartItem.images || []), ...images]
+        : existingCartItem.images;
+
       cartItem = await prisma.cartItem.update({
         where: { id: existingCartItem.id },
         data: {
-          quantity: existingCartItem.quantity + quantity,
-          ...(width !== undefined && { width: parseFloat(width) }),
-          ...(height !== undefined && { height: parseFloat(height) }),
-          ...(size && { size }),
-          ...(selectedFinishConfig && { selectedFinishConfig }),
+          quantity: existingCartItem.quantity + parsedQuantity,
+          ...(parsedWidth !== undefined && { width: parsedWidth }),
+          ...(parsedHeight !== undefined && { height: parsedHeight }),
+          ...(parsedSize && { size: parsedSize }),
+          ...(parsedFinishConfig && { selectedFinishConfig: parsedFinishConfig }),
+          ...(images.length > 0 && { images: updatedImages }),
         },
         include: {
           product: true,
@@ -86,11 +273,12 @@ const addToCart = async (req, res) => {
         data: {
           wholesaleSellerId: parseInt(wholesaleSellerId),
           productId: parseInt(productId),
-          quantity,
-          ...(width !== undefined && { width: parseFloat(width) }),
-          ...(height !== undefined && { height: parseFloat(height) }),
-          ...(size && { size }),
-          ...(selectedFinishConfig && { selectedFinishConfig }),
+          quantity: parsedQuantity,
+          ...(parsedWidth !== undefined && { width: parsedWidth }),
+          ...(parsedHeight !== undefined && { height: parsedHeight }),
+          ...(parsedSize && { size: parsedSize }),
+          ...(parsedFinishConfig && { selectedFinishConfig: parsedFinishConfig }),
+          ...(images.length > 0 && { images: images }),
         },
         include: {
           product: true,
@@ -131,24 +319,34 @@ const placeOrder = async (req, res) => {
       });
     }
 
-    // Validate shippingCost
-    if (typeof shippingCost !== 'number' || shippingCost < 0) {
+    // Parse and validate shippingCost
+    const parsedShippingCost = Number(shippingCost);
+    if (Number.isNaN(parsedShippingCost) || parsedShippingCost < 0) {
       return res.json({
         success: false,
         message: 'shippingCost must be a non-negative number',
       });
     }
 
+    // Parse shippingAddress if it's a string
+    const parsedShippingAddress = parseJSON(shippingAddress) || shippingAddress;
+
     // Validate shippingAddress is a valid object
-    if (typeof shippingAddress !== 'object' || shippingAddress === null) {
+    if (typeof parsedShippingAddress !== 'object' || parsedShippingAddress === null) {
       return res.json({
         success: false,
         message: 'shippingAddress must be a valid JSON object',
       });
     }
 
+    // Parse orderItems if it's a string
+    let parsedOrderItems = orderItems;
+    if (typeof orderItems === 'string') {
+      parsedOrderItems = parseJSON(orderItems);
+    }
+
     // Validate orderItems is an array
-    if (!Array.isArray(orderItems) || orderItems.length === 0) {
+    if (!Array.isArray(parsedOrderItems) || parsedOrderItems.length === 0) {
       return res.json({
         success: false,
         message: 'orderItems must be a non-empty array',
@@ -167,23 +365,24 @@ const placeOrder = async (req, res) => {
       });
     }
 
-    // Validate each order item and fetch product details
+    // Validate each order item and fetch product details and cart images
     let subtotal = 0;
     const orderItemsData = [];
 
-    for (const item of orderItems) {
-      const { productId, quantity, width, height, size, selectedFinishConfig } = item;
+    for (const item of parsedOrderItems) {
+      const { productId, quantity, width, height, size, selectedFinishConfig, cartItemId } = item;
 
       // Validate required fields for each item
-      if (!productId || !quantity || width === undefined || height === undefined) {
+      if (!productId || quantity === undefined || width === undefined || height === undefined) {
         return res.json({
           success: false,
           message: 'Each order item must have productId, quantity, width, and height',
         });
       }
 
-      // Validate quantity
-      if (typeof quantity !== 'number' || quantity <= 0) {
+      // Parse and validate quantity
+      const itemQuantity = Number(quantity);
+      if (Number.isNaN(itemQuantity) || itemQuantity <= 0) {
         return res.json({
           success: false,
           message: 'Quantity must be a positive number',
@@ -202,23 +401,43 @@ const placeOrder = async (req, res) => {
         });
       }
 
-      // Calculate item total
-      const itemTotal = product.basePrice * quantity;
+      // Fetch cart item images using wholesaleSellerId and productId combination
+      let cartImages = [];
+      const cartItem = await prisma.cartItem.findUnique({
+        where: {
+          wholesaleSellerId_productId: {
+            wholesaleSellerId: parseInt(wholesaleSellerId),
+            productId: parseInt(productId),
+          },
+        },
+      });
+      
+      if (cartItem && cartItem.images) {
+        cartImages = cartItem.images;
+      }
+
+      // Parse optional JSON fields for item
+      const itemSize = parseJSON(size) || size || {};
+      const itemFinishConfig = parseJSON(selectedFinishConfig) || selectedFinishConfig || {};
+
+      // Calculate item total (base price + finish config surcharges, computed server-side)
+      const itemTotal = calculateItemPrice(product, itemFinishConfig) * itemQuantity;
       subtotal += itemTotal;
 
       orderItemsData.push({
         productId: parseInt(productId),
-        quantity: parseInt(quantity),
+        quantity: itemQuantity,
         totalPrice: itemTotal,
         width: parseFloat(width),
         height: parseFloat(height),
-        size: size || {},
-        selectedFinishConfig: selectedFinishConfig || {},
+        size: itemSize,
+        selectedFinishConfig: itemFinishConfig,
+        images: cartImages || [],
       });
     }
 
     // Calculate total with shipping
-    const total = subtotal + shippingCost;
+    const total = subtotal + parsedShippingCost;
     const orderNumber = generateOrderNumber();
 
     // Create order and order items
@@ -227,12 +446,12 @@ const placeOrder = async (req, res) => {
         wholesaleSellerId: parseInt(wholesaleSellerId),
         orderNumber,
         subtotal,
-        shippingCost,
+        shippingCost: parsedShippingCost,
         total,
         paymentMethod: 'Cash on Delivery',
         paymentStatus: 'Pending',
         orderStatus: 'Pending',
-        shippingAddress,
+        shippingAddress: parsedShippingAddress,
         orderItems: {
           create: orderItemsData,
         },
@@ -285,8 +504,9 @@ const updateQuantity = async (req, res) => {
       });
     }
 
-    // Validate quantity
-    if (typeof quantity !== 'number' || quantity <= 0) {
+    // Parse and validate quantity
+    const parsedQuantity = Number(quantity);
+    if (Number.isNaN(parsedQuantity) || parsedQuantity <= 0) {
       return res.json({
         success: false,
         message: 'quantity must be a positive number',
@@ -310,7 +530,7 @@ const updateQuantity = async (req, res) => {
     const updatedCartItem = await prisma.cartItem.update({
       where: { id: parseInt(cartItemId) },
       data: {
-        quantity: parseInt(quantity),
+        quantity: parsedQuantity,
       },
       include: {
         product: true,
@@ -577,6 +797,7 @@ const reorderFromOrder = async (req, res) => {
             height: orderItem.height,
             size: orderItem.size,
             selectedFinishConfig: orderItem.selectedFinishConfig,
+            images: orderItem.images || [],
           },
           include: {
             product: true,
@@ -593,6 +814,7 @@ const reorderFromOrder = async (req, res) => {
             height: orderItem.height,
             size: orderItem.size,
             selectedFinishConfig: orderItem.selectedFinishConfig,
+            images: orderItem.images || [],
           },
           include: {
             product: true,
@@ -668,13 +890,15 @@ const getSellerCart = async (req, res) => {
       },
     });
 
-    // Calculate total cart value
+    // Calculate total cart value (base price + finish config surcharges, computed server-side)
     let cartSubtotal = 0;
     const cartItemsWithTotals = cartItems.map((item) => {
-      const itemTotal = item.product.basePrice * item.quantity;
+      const unitPrice = calculateItemPrice(item.product, item.selectedFinishConfig);
+      const itemTotal = unitPrice * item.quantity;
       cartSubtotal += itemTotal;
       return {
         ...item,
+        unitPrice,
         itemTotal,
       };
     });
@@ -704,4 +928,288 @@ const getSellerCart = async (req, res) => {
   }
 };
 
-export { addToCart, placeOrder, updateQuantity, deleteCartItem, getAllOrders, getSellerOrders, reorderFromOrder, getSellerCart };
+// ---------------------------------------------------------------------------
+// Stripe test payment flow
+// ---------------------------------------------------------------------------
+
+// Shared helper: validate order items and recompute totals from DB prices (server-side)
+// This prevents the client from tampering with prices.
+const buildOrderItemsFromDB = async (wholesaleSellerId, orderItems) => {
+  let subtotal = 0;
+  const orderItemsData = [];
+
+  for (const item of orderItems) {
+    const { productId, quantity, width, height, size, selectedFinishConfig } = item;
+
+    if (!productId || quantity === undefined || width === undefined || height === undefined) {
+      throw new Error('Each order item must have productId, quantity, width, and height');
+    }
+
+    const itemQuantity = Number(quantity);
+    if (Number.isNaN(itemQuantity) || itemQuantity <= 0 || !Number.isInteger(itemQuantity)) {
+      throw new Error('Quantity must be a positive integer');
+    }
+
+    const product = await prisma.product.findUnique({
+      where: { id: parseInt(productId) },
+    });
+
+    if (!product) {
+      throw new Error(`Product with ID ${productId} not found`);
+    }
+
+    // Fetch cart item images to copy into the order
+    let cartImages = [];
+    const cartItem = await prisma.cartItem.findUnique({
+      where: {
+        wholesaleSellerId_productId: {
+          wholesaleSellerId: parseInt(wholesaleSellerId),
+          productId: parseInt(productId),
+        },
+      },
+    });
+
+    if (cartItem && cartItem.images) {
+      cartImages = cartItem.images;
+    }
+
+    const itemSize = parseJSON(size) || size || {};
+    const itemFinishConfig = parseJSON(selectedFinishConfig) || selectedFinishConfig || {};
+
+    // Recompute price from the DB (base price + finish config surcharges), never trust the client
+    const itemTotal = calculateItemPrice(product, itemFinishConfig) * itemQuantity;
+    subtotal += itemTotal;
+
+    orderItemsData.push({
+      productId: parseInt(productId),
+      quantity: itemQuantity,
+      totalPrice: itemTotal,
+      width: parseFloat(width),
+      height: parseFloat(height),
+      size: itemSize,
+      selectedFinishConfig: itemFinishConfig,
+      images: cartImages || [],
+    });
+  }
+
+  return { subtotal, orderItemsData };
+};
+
+// Step 1: Create a Stripe Payment Intent. Total is computed server-side from DB prices.
+const createStripePaymentIntentController = async (req, res) => {
+  try {
+    const { wholesaleSellerId, shippingCost, orderItems } = req.body;
+
+    if (!wholesaleSellerId || shippingCost === undefined || !orderItems) {
+      return res.json({
+        success: false,
+        message: 'wholesaleSellerId, shippingCost, and orderItems are required',
+      });
+    }
+
+    const parsedShippingCost = Number(shippingCost);
+    if (Number.isNaN(parsedShippingCost) || parsedShippingCost < 0) {
+      return res.json({ success: false, message: 'shippingCost must be a non-negative number' });
+    }
+
+    let parsedOrderItems = orderItems;
+    if (typeof orderItems === 'string') {
+      parsedOrderItems = parseJSON(orderItems);
+    }
+    if (!Array.isArray(parsedOrderItems) || parsedOrderItems.length === 0) {
+      return res.json({ success: false, message: 'orderItems must be a non-empty array' });
+    }
+
+    const seller = await prisma.wholesaleSeller.findUnique({
+      where: { id: parseInt(wholesaleSellerId) },
+    });
+    if (!seller) {
+      return res.json({ success: false, message: 'Wholesale seller not found' });
+    }
+
+    // Recompute total server-side
+    const { subtotal } = await buildOrderItemsFromDB(wholesaleSellerId, parsedOrderItems);
+    const total = subtotal + parsedShippingCost;
+
+    // Create the Stripe Payment Intent
+    const { clientSecret, paymentIntentId } = await createStripePaymentIntent(total);
+
+    res.json({
+      success: true,
+      message: 'Payment Intent created',
+      clientSecret,
+      paymentIntentId,
+      total,
+    });
+  } catch (error) {
+    console.log('[v0] Error creating Stripe Payment Intent:', error.message);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// Step 2: Confirm the Stripe payment and, if successful, create the DB order + clear cart.
+const confirmStripePaymentController = async (req, res) => {
+  try {
+    const { paymentIntentId, wholesaleSellerId, shippingCost, shippingAddress, orderItems } = req.body;
+
+    if (!paymentIntentId || !wholesaleSellerId || shippingCost === undefined || !shippingAddress || !orderItems) {
+      return res.json({
+        success: false,
+        message: 'paymentIntentId, wholesaleSellerId, shippingCost, shippingAddress, and orderItems are required',
+      });
+    }
+
+    const parsedShippingCost = Number(shippingCost);
+    if (Number.isNaN(parsedShippingCost) || parsedShippingCost < 0) {
+      return res.json({ success: false, message: 'shippingCost must be a non-negative number' });
+    }
+
+    const parsedShippingAddress = parseJSON(shippingAddress) || shippingAddress;
+    if (typeof parsedShippingAddress !== 'object' || parsedShippingAddress === null) {
+      return res.json({ success: false, message: 'shippingAddress must be a valid JSON object' });
+    }
+
+    let parsedOrderItems = orderItems;
+    if (typeof orderItems === 'string') {
+      parsedOrderItems = parseJSON(orderItems);
+    }
+    if (!Array.isArray(parsedOrderItems) || parsedOrderItems.length === 0) {
+      return res.json({ success: false, message: 'orderItems must be a non-empty array' });
+    }
+
+    const seller = await prisma.wholesaleSeller.findUnique({
+      where: { id: parseInt(wholesaleSellerId) },
+    });
+    if (!seller) {
+      return res.json({ success: false, message: 'Wholesale seller not found' });
+    }
+
+    // Confirm the Stripe payment
+    const paymentResult = await confirmStripePayment(paymentIntentId);
+
+    if (paymentResult.status !== 'succeeded') {
+      return res.json({
+        success: false,
+        message: `Payment not successful. Status: ${paymentResult.status}`,
+      });
+    }
+
+    // Build order items again from DB (secure) and create the order
+    const { subtotal, orderItemsData } = await buildOrderItemsFromDB(wholesaleSellerId, parsedOrderItems);
+    const total = subtotal + parsedShippingCost;
+    const orderNumber = generateOrderNumber();
+
+    const order = await prisma.order.create({
+      data: {
+        wholesaleSellerId: parseInt(wholesaleSellerId),
+        orderNumber,
+        subtotal,
+        shippingCost: parsedShippingCost,
+        total,
+        paymentMethod: 'Stripe',
+        paymentStatus: 'Paid',
+        orderStatus: 'Processing',
+        shippingAddress: parsedShippingAddress,
+        orderItems: {
+          create: orderItemsData,
+        },
+      },
+      include: {
+        orderItems: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    // Clear cart after successful payment
+    await prisma.cartItem.deleteMany({
+      where: { wholesaleSellerId: parseInt(wholesaleSellerId) },
+    });
+
+    const redisClient = getRedisClient();
+    if (redisClient) {
+      await redisClient.del(`cart:${wholesaleSellerId}`);
+      await redisClient.setEx(`order:${order.id}`, 3600, JSON.stringify(order));
+    }
+
+    // Send order confirmation email to the seller
+    const sellerData = await prisma.wholesaleSeller.findUnique({
+      where: { id: parseInt(wholesaleSellerId) },
+      select: { email: true, name: true },
+    });
+
+    if (sellerData) {
+      await sendOrderConfirmationEmail(sellerData.email, sellerData.name, order);
+    }
+
+    res.json({
+      success: true,
+      message: 'Payment successful and order placed',
+      order,
+      stripePaymentId: paymentIntentId,
+    });
+  } catch (error) {
+    console.log('[v0] Error confirming Stripe payment:', error.message);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+const chargeAuthorizeNetController = async (req, res) => {
+  try {
+    const { paymentNonce, wholesaleSellerId, shippingCost, shippingAddress, orderItems } = req.body;
+    if (!paymentNonce || !wholesaleSellerId || shippingCost === undefined || !shippingAddress || !orderItems) {
+      return res.json({ success: false, message: 'paymentNonce, wholesaleSellerId, shippingCost, shippingAddress, and orderItems are required' });
+    }
+
+    const parsedShippingCost = Number(shippingCost);
+    const parsedShippingAddress = parseJSON(shippingAddress) || shippingAddress;
+    const parsedItems = typeof orderItems === 'string' ? parseJSON(orderItems) : orderItems;
+    if (!Number.isFinite(parsedShippingCost) || parsedShippingCost < 0 || !Array.isArray(parsedItems) || !parsedItems.length) {
+      return res.json({ success: false, message: 'Invalid shipping cost or order items' });
+    }
+    if (!parsedShippingAddress || typeof parsedShippingAddress !== 'object') {
+      return res.json({ success: false, message: 'shippingAddress must be a valid JSON object' });
+    }
+
+    const sellerId = parseInt(wholesaleSellerId);
+    const seller = await prisma.wholesaleSeller.findUnique({ where: { id: sellerId } });
+    if (!seller) return res.json({ success: false, message: 'Wholesale seller not found' });
+
+    const { subtotal, orderItemsData } = await buildOrderItemsFromDB(sellerId, parsedItems);
+    const total = subtotal + parsedShippingCost;
+    const payment = await chargeAuthorizeNet({ amount: total, opaqueData: paymentNonce });
+    const order = await prisma.order.create({
+      data: {
+        wholesaleSellerId: sellerId,
+        orderNumber: generateOrderNumber(),
+        subtotal,
+        shippingCost: parsedShippingCost,
+        total,
+        paymentMethod: 'Authorize.net',
+        paymentStatus: 'Paid',
+        orderStatus: 'Processing',
+        shippingAddress: parsedShippingAddress,
+        orderItems: { create: orderItemsData },
+      },
+      include: { orderItems: { include: { product: true } } },
+    });
+
+    await prisma.cartItem.deleteMany({ where: { wholesaleSellerId: sellerId } });
+    const redisClient = getRedisClient();
+    if (redisClient) {
+      await redisClient.del(`cart:${sellerId}`);
+      await redisClient.setEx(`order:${order.id}`, 3600, JSON.stringify(order));
+    }
+    const sellerData = await prisma.wholesaleSeller.findUnique({ where: { id: sellerId }, select: { email: true, name: true } });
+    if (sellerData) await sendOrderConfirmationEmail(sellerData.email, sellerData.name, order);
+
+    return res.json({ success: true, message: 'Authorize.net payment successful and order placed', order, authorizeNetTransactionId: payment.transactionId });
+  } catch (error) {
+    console.log('[v0] Error processing Authorize.net payment:', error.message);
+    return res.json({ success: false, message: error.message });
+  }
+};
+
+export { addToCart, placeOrder, updateQuantity, deleteCartItem, getAllOrders, getSellerOrders, reorderFromOrder, getSellerCart, createStripePaymentIntentController, confirmStripePaymentController, chargeAuthorizeNetController };

@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { X, Mail, Lock, Loader } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
+import LanguageSwitcher from './LanguageSwitcher'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const SellerLoginSidebar = ({ isOpen, onClose, onForgotPasswordClick }) => {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -29,12 +32,12 @@ const SellerLoginSidebar = ({ isOpen, onClose, onForgotPasswordClick }) => {
   const validateForm = () => {
     const newErrors = {}
     if (!formData.email) {
-      newErrors.email = 'Email is required'
+      newErrors.email = t('auth.emailRequired')
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email'
+      newErrors.email = t('auth.validEmail')
     }
     if (!formData.password) {
-      newErrors.password = 'Password is required'
+      newErrors.password = t('auth.passwordRequired')
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -68,16 +71,16 @@ const SellerLoginSidebar = ({ isOpen, onClose, onForgotPasswordClick }) => {
         localStorage.setItem('sellerEmail', formData.email)
         localStorage.setItem('sellerId', data.id)
         localStorage.setItem('userType', 'wholesale-seller')
-        toast.success('Login successful! Redirecting...')
+        toast.success(t('auth.loginSuccess'))
         onClose()
         setTimeout(() => {
           window.location.href = '/dashboard-banner'
         }, 1000)
       } else {
-        toast.error(data.message || 'Login failed. Please try again.')
+        toast.error(data.message || t('auth.loginFailed'))
       }
     } catch (error) {
-      toast.error('Connection error. Please check your backend server.')
+      toast.error(t('auth.connectionError'))
       console.error('Login error:', error)
     } finally {
       setLoading(false)
@@ -91,6 +94,7 @@ const SellerLoginSidebar = ({ isOpen, onClose, onForgotPasswordClick }) => {
       <div className={`fixed right-0 top-0 h-screen w-80 bg-white z-50 shadow-lg transition-transform duration-300 ease-in-out overflow-y-auto ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* Close Button */}
         <div className='flex justify-end p-6'>
+          <LanguageSwitcher />
           <button
             onClick={onClose}
             className='p-2 hover:bg-gray-100 rounded-lg transition'
@@ -101,19 +105,19 @@ const SellerLoginSidebar = ({ isOpen, onClose, onForgotPasswordClick }) => {
 
         {/* Form Content */}
         <div className='px-8 pb-8'>
-          <h1 className='text-4xl font-bold mb-8 text-black'>Login</h1>
+          <h1 className='text-4xl font-bold mb-8 text-black'>{t('auth.email')}</h1>
 
           <form onSubmit={handleSubmit} className='space-y-6'>
             {/* Email Input */}
             <div>
-              <label className='block text-black font-semibold mb-3'>Email</label>
+              <label className='block text-black font-semibold mb-3'>{t('auth.email')}</label>
               <input
                 type='email'
                 name='email'
                 value={formData.email}
                 onChange={handleChange}
                 className='w-full pb-2 border-b-2 border-gray-300 focus:border-green-500 focus:outline-none text-black'
-                placeholder='Enter your email'
+                placeholder={t('auth.enterEmail')}
               />
               {errors.email && (
                 <p className='text-red-500 text-sm mt-2'>{errors.email}</p>
@@ -122,14 +126,14 @@ const SellerLoginSidebar = ({ isOpen, onClose, onForgotPasswordClick }) => {
 
             {/* Password Input */}
             <div>
-              <label className='block text-black font-semibold mb-3'>Password</label>
+              <label className='block text-black font-semibold mb-3'>{t('auth.password')}</label>
               <input
                 type='password'
                 name='password'
                 value={formData.password}
                 onChange={handleChange}
                 className='w-full pb-2 border-b-2 border-gray-300 focus:border-green-500 focus:outline-none text-black'
-                placeholder='Enter your password'
+                placeholder={t('auth.enterPassword')}
               />
               {errors.password && (
                 <p className='text-red-500 text-sm mt-2'>{errors.password}</p>
@@ -146,10 +150,10 @@ const SellerLoginSidebar = ({ isOpen, onClose, onForgotPasswordClick }) => {
                 {loading ? (
                   <>
                     <Loader size={18} className='animate-spin' />
-                    Logging in...
+                    {t('auth.loggingIn')}
                   </>
                 ) : (
-                  'Login'
+                  t('auth.email')
                 )}
               </button>
             </div>
@@ -164,7 +168,7 @@ const SellerLoginSidebar = ({ isOpen, onClose, onForgotPasswordClick }) => {
                 }}
                 className='text-blue-500 hover:text-blue-700 underline font-semibold'
               >
-                Forgot your password?
+                {t('auth.forgotPassword')}
               </button>
             </div>
           </form>

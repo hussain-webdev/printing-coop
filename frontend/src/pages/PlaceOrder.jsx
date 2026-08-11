@@ -8,8 +8,20 @@ import Footer from '../components/Footer'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+// Pulls the current language's value out of a { en, fr } field. Falls back to
+// English, then to a plain string if the field isn't localized at all (keeps
+// this working for any older product data saved before translations were added).
+const getLocalizedField = (field, language, fallback) => {
+  if (field === null || field === undefined) return fallback
+  if (typeof field === 'object' && !Array.isArray(field)) {
+    return field[language] ?? field.en ?? fallback
+  }
+  return field
+}
+
 const PlaceOrder = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const language = i18n.language === 'fr' ? 'fr' : 'en'
   const navigate = useNavigate()
   
   const [cartItems, setCartItems] = useState([])
@@ -152,7 +164,7 @@ const PlaceOrder = () => {
     return null
   }
 
-  // Handle place order
+  // Handle place order -> continue to the Payment page
   const handlePlaceOrder = async () => {
     try {
       const selectedAddress = getSelectedAddress()
@@ -167,12 +179,11 @@ const PlaceOrder = () => {
         return
       }
 
-      const token = localStorage.getItem('sellerToken')
       const sellerId = localStorage.getItem('sellerId')
 
       setPlacingOrder(true)
 
-      // Prepare order items
+      // Prepare order items to hand off to the payment step
       const orderItems = cartItems.map((item) => ({
         productId: item.productId,
         quantity: item.quantity,
@@ -182,30 +193,22 @@ const PlaceOrder = () => {
         selectedFinishConfig: item.selectedFinishConfig || {},
       }))
 
-      const response = await fetch(`${BACKEND_URL}/api/order/place-order`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          wholesaleSellerId: parseInt(sellerId),
-          shippingCost,
-          shippingAddress: selectedAddress,
-          orderItems,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (data.success) {
-        toast.success(t('placeOrder.orderSummary'))
-        navigate('/order-history')
-      } else {
-        toast.error(data.message || t('placeOrder.title'))
+      const paymentPayload = {
+        wholesaleSellerId: parseInt(sellerId),
+        shippingCost,
+        shippingAddress: selectedAddress,
+        orderItems,
+        subtotal: calculateTotal(),
+        total: calculateTotal() + shippingCost,
       }
+
+      // Persist to sessionStorage as a fallback for page refresh on the Payment page
+      sessionStorage.setItem('pendingOrder', JSON.stringify(paymentPayload))
+
+      // Navigate to the Payment page and pass the order details via router state
+      navigate('/payment', { state: paymentPayload })
     } catch (err) {
-      console.error('[v0] Error placing order:', err)
+      console.error('[v0] Error preparing payment:', err)
       toast.error(t('common.connectionError'))
     } finally {
       setPlacingOrder(false)
@@ -319,9 +322,10 @@ const PlaceOrder = () => {
                 </div>
                 <div className='divide-y divide-gray-200'>
                   {cartItems.map((item) => (
+                    <div key={item.id} >
                     <div key={item.id} className='px-6 py-4 flex justify-between items-start gap-4'>
                       <div>
-                        <p className='font-semibold text-gray-900 text-sm'>{item.product?.name}</p>
+                        <p className='font-semibold text-gray-900 text-sm'>{getLocalizedField(item.product?.name, language, '')}</p>
                         <p className='text-xs text-gray-500 mt-0.5'>{formatSizeDisplay(item)}</p>
                         <p className='text-xs text-gray-500 mt-0.5'>{formatFinishConfig(item.selectedFinishConfig)}</p>
                       </div>
@@ -330,6 +334,36 @@ const PlaceOrder = () => {
                         <p className='font-semibold text-gray-900 text-sm mt-0.5'>${item.itemTotal.toFixed(2)}</p>
                       </div>
                     </div>
+                    {item.images && item.images.length > 0 && (
+                    <div className='mt-4'>
+                      <div className='flex flex-wrap'>
+                        {Object.values(
+                          item.images.reduce((acc, image) => {
+                            const key = image.url
+                            if (!acc[key]) {
+                              acc[key] = { url: image.url, count: 0 }
+                            }
+                            acc[key].count += 1
+                            return acc
+                          }, {})
+                        ).map((groupedImage, index) => (
+                          <div key={index} className='relative'>
+                            <img
+                              src={groupedImage.url}
+                              alt={`${getLocalizedField(item.product?.name, language, 'Product')} - Image ${index + 1}`}
+                              className='pl-6 pb-4 h-18'
+                            />
+                            {groupedImage.count > 1 && (
+                              <span className='absolute bottom-1 right-1 bg-black/70 text-white text-xs font-semibold px-1.5 py-0.5 rounded'>
+                                x {groupedImage.count}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  </div>
                   ))}
                 </div>
               </div>
@@ -494,8 +528,8 @@ const PlaceOrder = () => {
                     readOnly
                   />
                   <div>
-                    <p className='font-semibold text-gray-900 text-sm'>{t('placeOrder.paymentMethod')}</p>
-                    <p className='text-xs text-gray-500 mt-0.5'>{t('placeOrder.codDescription')}</p>
+                    <p className='font-semibold text-gray-900 text-sm'>Stripe</p>
+                    <p className='text-xs text-gray-500 mt-0.5'>Pay securely with Stripe (test mode)</p>
                   </div>
                 </label>
               </div>
@@ -528,7 +562,7 @@ const PlaceOrder = () => {
                     disabled={placingOrder}
                     className='w-full px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-semibold uppercase tracking-wide rounded transition'
                   >
-                    {placingOrder ? `${t('common.loading')}` : t('placeOrder.title')}
+                    {placingOrder ? `${t('common.loading')}` : 'Continue to Payment'}
                   </button>
 
                   <button

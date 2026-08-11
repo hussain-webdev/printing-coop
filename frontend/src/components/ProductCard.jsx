@@ -1,17 +1,41 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+
+// Pulls the current language's value out of a { en, fr } field. Falls back to
+// English, then to a plain string/array if the field isn't localized at all
+// (keeps this working for any older product data saved before translations
+// were added), then to the given fallback.
+const getLocalizedField = (field, language, fallback) => {
+  if (field === null || field === undefined) return fallback
+  if (typeof field === 'object' && !Array.isArray(field)) {
+    return field[language] ?? field.en ?? fallback
+  }
+  return field
+}
 
 const ProductCard = ({ product }) => {
   const navigate = useNavigate()
+  const { i18n } = useTranslation()
+  const language = i18n.language === 'fr' ? 'fr' : 'en'
   const [isHovered, setIsHovered] = useState(false)
   const [showModal, setShowModal] = useState(false)
 
   // Get the first image from the images array
   const backgroundImage = product?.images?.[0]?.url || '/placeholder.svg?height=300&width=400'
   const logoImage = product?.logo || '/placeholder.svg?height=60&width=60'
-  const materials = product?.materials || 'Materials not available'
-  const productName = product?.name || 'Product Name'
+  const materials = getLocalizedField(product?.materials, language, 'Materials not available')
+  const productName = getLocalizedField(product?.name, language, 'Product Name')
+  const description = getLocalizedField(product?.description, language, 'Product description not available')
+  const commonUses = getLocalizedField(product?.commonUses, language, [])
+  const options = getLocalizedField(product?.options, language, [])
+  const environment = getLocalizedField(product?.environment, language, [])
+
+  // Product "name" is localized now, so type checks (e.g. is this the DTF
+  // product) need the raw English value rather than the display string
+  const productNameEn = typeof product?.name === 'object' ? product?.name?.en : product?.name
+  const isDTF = productNameEn === 'DTF'
 
   return (
     <div
@@ -40,13 +64,13 @@ const ProductCard = ({ product }) => {
             isHovered ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
         >
-          <img src={logoImage} alt='logo' className='w-16 h-16 object-contain' />
-          <div className='text-center'>
+          <img src={logoImage} alt='logo' className='w-56 object-contain' />
+          {/* <div className='text-center'>
             <h3 className='font-bold text-base text-gray-900 tracking-wide text-balance'>
               {productName.toUpperCase()}
             </h3>
             <div className='w-16 h-0.5 bg-orange-500 mx-auto mt-2' />
-          </div>
+          </div> */}
         </div>
 
         {/* Hover view: name, material, buttons - fades in on hover */}
@@ -66,7 +90,7 @@ const ProductCard = ({ product }) => {
             </button>
             <button
               onClick={() => {
-                const route = product.name === 'DTF' ? `/order/dtf/${product.id}` : `/order/${product.category}/${product.id}`
+                const route = isDTF ? `/order/dtf/${product.id}` : `/order/${product.category}/${product.id}`
                 navigate(route)
               }}
               className='px-3 py-1.5 bg-orange-500 text-white text-xs font-semibold rounded-md hover:bg-orange-600 transition-colors duration-200'
@@ -110,7 +134,7 @@ const ProductCard = ({ product }) => {
                 {/* Description */}
                 <div>
                   <p className='text-gray-900 text-base leading-relaxed'>
-                    {product?.description || 'Product description not available'}
+                    {description}
                   </p>
                 </div>
 
@@ -121,7 +145,7 @@ const ProductCard = ({ product }) => {
                   </button>
                   <button
                     onClick={() => {
-                      const route = product.name === 'DTF' ? `/order/dtf/${product.id}` : `/order/${product.category}/${product.id}`
+                      const route = isDTF ? `/order/dtf/${product.id}` : `/order/${product.category}/${product.id}`
                       navigate(route)
                     }}
                     className='px-6 py-2.5 border-2 border-gray-900 text-gray-900 font-semibold rounded-full hover:bg-yellow-300 transition'
@@ -135,11 +159,11 @@ const ProductCard = ({ product }) => {
               <div className='lg:w-1/2'>
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-8'>
                   {/* Common Uses */}
-                  {product?.commonUses && product.commonUses.length > 0 && (
+                  {commonUses && commonUses.length > 0 && (
                     <div>
                       <h3 className='text-xl font-bold text-gray-900 mb-3'>COMMON USES</h3>
                       <ul className='space-y-2'>
-                        {product.commonUses.map((use, index) => (
+                        {commonUses.map((use, index) => (
                           <li key={index} className='text-amber-900 flex items-start gap-2'>
                             <span className='text-amber-900 mt-1'>•</span>
                             <span>{use}</span>
@@ -150,11 +174,11 @@ const ProductCard = ({ product }) => {
                   )}
 
                   {/* Options */}
-                  {product?.options && product.options.length > 0 && (
+                  {options && options.length > 0 && (
                     <div>
-                      <h3 className='text-xl font-bold text-gray-900 mb-3'>{product.name === 'DTF' ? 'INSTRUCTIONS' : 'OPTIONS'}</h3>
+                      <h3 className='text-xl font-bold text-gray-900 mb-3'>{isDTF ? 'INSTRUCTIONS' : 'OPTIONS'}</h3>
                       <ul className='space-y-2'>
-                        {product.options.map((opt, index) => (
+                        {options.map((opt, index) => (
                           <li key={index} className='text-amber-900 flex items-start gap-2'>
                             <span className='text-amber-900 mt-1'>•</span>
                             <span>{opt}</span>
@@ -165,11 +189,11 @@ const ProductCard = ({ product }) => {
                   )}
 
                   {/* Environment */}
-                  {product?.environment && product.environment.length > 0 && (
+                  {environment && environment.length > 0 && (
                     <div>
-                      <h3 className='text-xl font-bold text-gray-900 mb-3'>{product.name === 'DTF' ? 'COMMON ITEMS' : 'ENVIRONMENT'}</h3>
+                      <h3 className='text-xl font-bold text-gray-900 mb-3'>{isDTF ? 'COMMON ITEMS' : 'ENVIRONMENT'}</h3>
                       <ul className='space-y-2'>
-                        {product.environment.map((env, index) => (
+                        {environment.map((env, index) => (
                           <li key={index} className='text-amber-900 flex items-start gap-2'>
                             <span className='text-amber-900 mt-1'>•</span>
                             <span>{env}</span>

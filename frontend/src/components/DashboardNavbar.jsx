@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Menu, ShoppingBasket, ShoppingCart } from 'lucide-react';
+import { Camera, Menu, ShoppingBasket, ShoppingCart } from 'lucide-react';
 import { useTranslation } from 'react-i18next'
 import MenuSidebar from './MenuSidebar';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -61,6 +61,9 @@ const DashboardNavbar = () => {
 
                 <img className='w-8 h-6 object-cover rounded-sm' src="/us.svg" alt="" />
 
+                <Link to={'/image-zone'}>
+                  <Camera size={26} strokeWidth={1.3} color='#3d3d3d' className='cursor-pointer' />
+                </Link>
                 <Link to={'/cart'}>
                   <ShoppingCart size={26} strokeWidth={1.3} color='#3d3d3d' className='cursor-pointer' />
                 </Link>

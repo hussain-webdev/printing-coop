@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Loader, Plus, Minus, ChevronRight, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardNavbar from '../components/DashboardNavbar'
+import ImageUpload from '../components/ImageUpload'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
@@ -13,9 +14,22 @@ const OrderDTF = () => {
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [uploadedImage, setUploadedImage] = useState(null)
+
+  // Uploaded image state
   const [imagePreview, setImagePreview] = useState(null)
-  
+  const [showImageUploadModal, setShowImageUploadModal] = useState(false)
+
+  // Natural pixel dimensions of the selected image, used to keep width/height proportional
+  const [naturalDims, setNaturalDims] = useState({ width: 0, height: 0 })
+
+  // Editable dimensions (inches). Width defaults to the 22" roll width; height is derived
+  // from the image's actual aspect ratio once one is selected.
+  const [width, setWidth] = useState(22)
+  const [height, setHeight] = useState(0)
+
+  // Which popup is currently open: null | 'size'
+  const [openPopup, setOpenPopup] = useState(null)
+
   // Quantity state
   const [quantity, setQuantity] = useState(1)
   
@@ -57,16 +71,44 @@ const OrderDTF = () => {
     }
   }, [productId])
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setUploadedImage(file)
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        setImagePreview(event.target?.result)
-      }
-      reader.readAsDataURL(file)
+  const handleImageSelect = (imageUrl) => {
+    setImagePreview(imageUrl)
+
+    // Load the image off-screen to read its real pixel dimensions, then derive
+    // height from the current width using the image's actual aspect ratio.
+    const img = new Image()
+    img.onload = () => {
+      setNaturalDims({ width: img.naturalWidth, height: img.naturalHeight })
+      const ratio = img.naturalHeight / img.naturalWidth
+      setHeight(Math.round(parseFloat(width || 0) * ratio * 100) / 100)
     }
+    img.src = imageUrl
+  }
+
+  // Editing width recalculates height (and vice versa) from the image's real aspect ratio
+  const handleWidthChange = (value) => {
+    setWidth(value)
+    if (naturalDims.width && naturalDims.height) {
+      const ratio = naturalDims.height / naturalDims.width
+      setHeight(Math.round(parseFloat(value || 0) * ratio * 100) / 100)
+    }
+  }
+
+  const handleHeightChange = (value) => {
+    setHeight(value)
+    if (naturalDims.width && naturalDims.height) {
+      const ratio = naturalDims.width / naturalDims.height
+      setWidth(Math.round(parseFloat(value || 0) * ratio * 100) / 100)
+    }
+  }
+
+  // Preview: the image always fills the fixed preview height, width scales proportionally
+  const MAX_PREVIEW_HEIGHT = 220
+  const getScaledImageWidth = () => {
+    const h = parseFloat(height) || 0
+    const w = parseFloat(width) || 0
+    if (!h || !w) return 0
+    return (w * MAX_PREVIEW_HEIGHT) / h
   }
 
   // Handle add to cart
@@ -83,21 +125,27 @@ const OrderDTF = () => {
 
       setAddingToCart(true)
 
+      const requestBody = {
+        wholesaleSellerId: parseInt(sellerId),
+        productId: parseInt(productId),
+        quantity: parseInt(quantity),
+        width: parseFloat(width) || 0,
+        height: parseFloat(height) || 0,
+        size: [],
+        selectedFinishConfig: {},
+      }
+
+      if (imagePreview) {
+        requestBody.imageUrl = imagePreview
+      }
+
       const response = await fetch(`${BACKEND_URL}/api/order/add-to-cart`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          wholesaleSellerId: parseInt(sellerId),
-          productId: parseInt(productId),
-          quantity: parseInt(quantity),
-          width: undefined,
-          height: undefined,
-          size: [],
-          selectedFinishConfig: {},
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       const data = await response.json()
@@ -143,6 +191,11 @@ const OrderDTF = () => {
   return (
     <div>
       <DashboardNavbar />
+      <ImageUpload
+        isOpen={showImageUploadModal}
+        onClose={() => setShowImageUploadModal(false)}
+        onSelectImage={handleImageSelect}
+      />
       <div className='pt-34 md:pt-30 overflow-x-hidden min-h-screen'>
         {/* Grid Background */}
         <div className='relative bg-[#f0f0f0] min-h-screen'>
@@ -155,11 +208,11 @@ const OrderDTF = () => {
               <div className='flex justify-between items-start mb-8'>
                 <div>
                   <h1 className='text-5xl font-bold text-gray-900 mb-2'>{product.name}</h1>
-                  <p className='text-gray-600'>DTF Transfer 22", 0" x 0"</p>
+                  <p className='text-gray-600'>DTF Transfer 22", {width || 0}" x {height || 0}"</p>
                 </div>
                 <div className='text-right'>
                   <p className='text-5xl font-bold text-green-500'>${product.basePrice.toFixed(2)}</p>
-                  <p className='text-gray-600 text-sm'>0 linear inch / 24 Hours Production</p>
+                  <p className='text-gray-600 text-sm'>{width || 0} linear inch / 24 Hours Production</p>
                 </div>
               </div>
 
@@ -167,17 +220,9 @@ const OrderDTF = () => {
               <div className='max-w-6xl mx-auto'>
                 {/* Sheet Line Visualization (click anywhere to select the transfer image) */}
                 <div className='relative py-6'>
-                  {/* Hidden file input covering the whole sheet area */}
-                  {/* <input
-                    type='file'
-                    accept='image/*'
-                    onChange={handleImageChange}
-                    className='absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10'
-                  /> */}
-
                   {/* Top row: signs count / TOP OF SHEET / LEFT-RIGHT edge labels */}
                   <div className='relative flex items-center justify-between px-6'>
-                    <span className='text-sm font-bold text-gray-900'>0 signs</span>
+                    <span className='text-sm font-bold text-gray-900'>{imagePreview ? '1' : '0'} signs</span>
                     <div className='flex items-center gap-1'>
                       <ChevronDown size={12} className='text-gray-700' />
                       <span className='text-sm font-bold text-gray-900'>TOP OF SHEET</span>
@@ -205,26 +250,91 @@ const OrderDTF = () => {
 
                   {/* Sheet Info */}
                   <div className='text-center mt-3'>
-                    <p className='text-sm text-gray-900'>Sheet #1 / 22" x 0" / Front Side</p>
+                    <p className='text-sm text-gray-900'>Sheet #1 / {width || 0}" x {height || 0}" / Front Side</p>
                   </div>
 
-                  {/* Preview / blank canvas area */}
-                  <div className='relative h-96 mt-6 flex items-center justify-center'>
-                    {imagePreview && (
+                  {/* Preview: image sits left-aligned against a checkered (transparent) sheet background */}
+                  {imagePreview && (
+                  <div
+                    className='relative w-full overflow-hidden mt-6'
+                    style={{
+                      height: `${MAX_PREVIEW_HEIGHT}px`,
+                      backgroundColor: '#ffffff',
+                      backgroundImage:
+                        'linear-gradient(45deg, #e5e5e5 25%, transparent 25%), linear-gradient(-45deg, #e5e5e5 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e5e5 75%), linear-gradient(-45deg, transparent 75%, #e5e5e5 75%)',
+                      backgroundSize: '16px 16px',
+                      backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0',
+                    }}
+                  >
                       <img
                         src={imagePreview}
-                        alt='Preview'
-                        className='max-h-full max-w-full object-contain'
+                        alt='DTF transfer artwork'
+                        className='absolute top-0 left-0 h-full object-contain'
+                        style={{ width: `${getScaledImageWidth()}px`, maxWidth: '100%' }}
                       />
-                    )}
                   </div>
+                    )}
                 </div>
 
-                {/* Images Box (only box for this product type) */}
-                <div className='flex justify-center'>
-                  <div className='w-64 flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white'>
+                {/* Images + Size Boxes */}
+                <div className='flex justify-center gap-4'>
+                  {/* Images - click to open the image library and select/change the artwork */}
+                  <button
+                    type='button'
+                    onClick={() => setShowImageUploadModal(true)}
+                    className='w-64 flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
+                  >
                     <span className='text-gray-400 font-medium text-sm tracking-wide'>IMAGES</span>
-                    <span className='px-3 py-1 bg-gray-500 text-white rounded font-bold text-sm'>{uploadedImage ? '1' : '0'}</span>
+                    <span className='px-3 py-1 bg-gray-500 text-white rounded font-bold text-sm'>{imagePreview ? '1' : '0'}</span>
+                  </button>
+
+                  {/* Size - click to open editable width/height inputs */}
+                  <div className='relative w-64'>
+                    <button
+                      type='button'
+                      onClick={() => setOpenPopup(openPopup === 'size' ? null : 'size')}
+                      className='w-full flex items-center justify-between border border-green-600 rounded-lg px-4 py-3 bg-white hover:bg-green-50 transition'
+                    >
+                      <span className='text-green-600 font-medium text-sm tracking-wide'>SIZE</span>
+                      <span className='px-3 py-1 bg-green-600 text-white rounded font-bold text-sm'>
+                        {width || 0}" x {height || 0}"
+                      </span>
+                    </button>
+
+                    {/* Editable size popup */}
+                    {openPopup === 'size' && (
+                      <div className='absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
+                        <div className='px-4 py-2 border-b border-gray-200 text-center'>
+                          <span className='text-sm text-gray-700'>Size (inches)</span>
+                        </div>
+                        <div className='px-4 py-3 space-y-3'>
+                          <div className='flex items-center gap-2'>
+                            <label className='text-sm text-gray-600 w-14'>width:</label>
+                            <input
+                              type='number'
+                              min='0'
+                              step='0.1'
+                              value={width}
+                              onChange={(e) => handleWidthChange(e.target.value)}
+                              className='flex-1 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
+                            />
+                            <span className='text-xs text-gray-500'>in</span>
+                          </div>
+                          <div className='flex items-center gap-2'>
+                            <label className='text-sm text-gray-600 w-14'>height:</label>
+                            <input
+                              type='number'
+                              min='0'
+                              step='0.1'
+                              value={height}
+                              onChange={(e) => handleHeightChange(e.target.value)}
+                              className='flex-1 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
+                            />
+                            <span className='text-xs text-gray-500'>in</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

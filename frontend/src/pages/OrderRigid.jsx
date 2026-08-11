@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Loader, Plus, Minus, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DashboardNavbar from '../components/DashboardNavbar'
+import ImageUpload from '../components/ImageUpload'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
@@ -34,6 +35,14 @@ const OrderRigid = () => {
   
   // Sheet navigation
   const [currentSheet, setCurrentSheet] = useState(1)
+
+  // Uploaded images: up to 10 cells total across all images. Each entry is
+  // { url, quantity } - quantity is how many of the 10 cells that image fills.
+  // Only the most recently added image's quantity is editable; earlier ones
+  // are locked in place once a new image is added.
+  const MAX_CELLS = 10
+  const [images, setImages] = useState([])
+  const [showImageUploadModal, setShowImageUploadModal] = useState(false)
 
   // Fetch product details
   useEffect(() => {
@@ -108,6 +117,89 @@ const OrderRigid = () => {
 
   const getAdjustedBasePrice = () => (product ? product.basePrice + getConfigSurcharge() : 0)
 
+  // Total cells currently filled across all selected images
+  const getTotalUsedCells = () => images.reduce((sum, img) => sum + img.quantity, 0)
+
+  // When editingIndex is set, the next image picked replaces that entry's image
+  // instead of adding a new one. null means "add a new image".
+  const [editingIndex, setEditingIndex] = useState(null)
+
+  // Opens the picker to add a new image, as long as there's room left in the grid
+  const handleOpenImagePicker = () => {
+    if (getTotalUsedCells() >= MAX_CELLS) {
+      toast.error('All 10 cells are already filled')
+      return
+    }
+    setEditingIndex(null)
+    setShowImageUploadModal(true)
+  }
+
+  // Opens the picker to replace a specific, already-selected image (its quantity is kept)
+  const handleChangeImage = (index) => {
+    setEditingIndex(index)
+    setShowImageUploadModal(true)
+  }
+
+  // Removes an image entry entirely, freeing its cells back up for the others
+  const handleRemoveImage = (index) => {
+    setImages((prev) => prev.filter((_, idx) => idx !== index))
+  }
+
+  const handleImageSelect = (imageUrl) => {
+    if (editingIndex !== null) {
+      // Replacing an existing entry's image - quantity stays the same
+      setImages((prev) => prev.map((img, idx) => (idx === editingIndex ? { ...img, url: imageUrl } : img)))
+      setEditingIndex(null)
+      return
+    }
+
+    // Adding a brand new entry, starting at quantity 1
+    setImages((prev) => {
+      const remaining = MAX_CELLS - prev.reduce((sum, img) => sum + img.quantity, 0)
+      if (remaining <= 0) {
+        toast.error('All 10 cells are already filled')
+        return prev
+      }
+      return [...prev, { url: imageUrl, quantity: 1 }]
+    })
+  }
+
+  // Any image's quantity can be changed independently, capped by however many
+  // cells all the OTHER images are currently using
+  const handleImageQuantityChange = (index, newQuantity) => {
+    setImages((prev) => {
+      const usedByOthers = prev.reduce((sum, img, idx) => (idx === index ? sum : sum + img.quantity), 0)
+      const maxAllowed = MAX_CELLS - usedByOthers
+      const clamped = Math.min(Math.max(1, newQuantity), maxAllowed)
+      return prev.map((img, idx) => (idx === index ? { ...img, quantity: clamped } : img))
+    })
+  }
+
+  // Expands the images array into one URL per cell (in order), capped at 10 entries -
+  // this is exactly what gets sent to the cart as the item's images array
+  const getCellImages = () => {
+    const cells = []
+    images.forEach((img) => {
+      for (let i = 0; i < img.quantity; i++) {
+        if (cells.length < MAX_CELLS) cells.push(img.url)
+      }
+    })
+    return cells
+  }
+
+  // Extracts a display name from an image URL, for the "image name -> quantity" config entries
+  const getImageName = (url, index) => {
+    try {
+      const withoutQuery = url.split('?')[0]
+      const segments = withoutQuery.split('/')
+      const fileName = decodeURIComponent(segments[segments.length - 1] || '')
+      return fileName || `Image ${index + 1}`
+    } catch (e) {
+      return `Image ${index + 1}`
+    }
+  }
+
+
   const handleAddToCart = async () => {
     try {
       const token = localStorage.getItem('sellerToken')
@@ -126,6 +218,11 @@ const OrderRigid = () => {
 
       setAddingToCart(true)
 
+      const imageConfigEntries = images.reduce((acc, img, idx) => {
+        acc[getImageName(img.url, idx)] = img.quantity
+        return acc
+      }, {})
+
       const response = await fetch(`${BACKEND_URL}/api/order/add-to-cart`, {
         method: 'POST',
         headers: {
@@ -139,8 +236,9 @@ const OrderRigid = () => {
           width: getTotalWidth(),
           height: getTotalHeight(),
           size: [widthFt ? `${widthFt}ft` : '', widthIn ? `${widthIn}in` : '', heightFt ? `${heightFt}ft` : '', heightIn ? `${heightIn}in` : ''].filter(Boolean),
-          selectedFinishConfig: selectedConfig,
+          selectedFinishConfig: { ...selectedConfig, ...imageConfigEntries },
           basePrice: getAdjustedBasePrice(),
+          images: getCellImages(),
         }),
       })
 
@@ -187,6 +285,11 @@ const OrderRigid = () => {
   return (
     <div>
       <DashboardNavbar />
+      <ImageUpload
+        isOpen={showImageUploadModal}
+        onClose={() => setShowImageUploadModal(false)}
+        onSelectImage={handleImageSelect}
+      />
       <div className='pt-34 md:pt-30 overflow-x-hidden min-h-screen'>
         {/* Grid Background */}
         <div className='relative bg-[#f0f0f0] min-h-screen'>
@@ -247,9 +350,21 @@ const OrderRigid = () => {
                         className='grid'
                         style={{ width: '200px', height: '450px', gridTemplateColumns: 'repeat(2, 1fr)', gridTemplateRows: 'repeat(5, 1fr)' }}
                       >
-                        {Array.from({ length: 10 }).map((_, idx) => (
-                          <div key={idx} className='border-2 border-dashed border-blue-600 bg-white' />
-                        ))}
+                        {Array.from({ length: 10 }).map((_, idx) => {
+                          const cellImage = getCellImages()[idx]
+                          return (
+                            <div
+                              key={idx}
+                              className={`border-2 bg-white overflow-hidden ${
+                                cellImage ? 'border-solid border-gray-800' : 'border-dashed border-blue-600'
+                              }`}
+                            >
+                              {cellImage && (
+                                <img src={cellImage} alt={`Sign ${idx + 1}`} className='w-full h-full object-cover' />
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
 
@@ -266,15 +381,73 @@ const OrderRigid = () => {
                 </div>
 
                 {/* Info / Size / Config Boxes Row */}
-                <div className='relative flex gap-4 mt-4'>
-                  {/* Images (dummy, static) */}
-                  <div className='flex-1 flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white'>
+                <div className='relative flex flex-wrap gap-4 mt-4'>
+                  {/* Images - click to open the image library and add another image */}
+                  <button
+                    type='button'
+                    onClick={handleOpenImagePicker}
+                    className='flex-none w-[270px] flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
+                  >
                     <span className='text-gray-600 font-medium text-sm tracking-wide'>IMAGES</span>
-                    <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm'>1</span>
-                  </div>
+                    <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm'>{getTotalUsedCells()}/{MAX_CELLS}</span>
+                  </button>
+
+                  {/* One card per selected image - each has its own change-image button
+                      and its own independent quantity stepper */}
+                  {images.map((img, idx) => (
+                    <div
+                      key={idx}
+                      className='flex-none w-[270px] flex items-center gap-3 border border-gray-400 rounded-lg px-3 py-3 bg-white'
+                    >
+                      <img
+                        src={img.url}
+                        alt={`Selected ${idx + 1}`}
+                        className='w-10 h-10 object-cover rounded border border-gray-300 shrink-0'
+                      />
+                      <div className='flex-1 min-w-0'>
+                        <div className='flex items-center gap-2'>
+                          <button
+                            type='button'
+                            onClick={() => handleChangeImage(idx)}
+                            className='text-xs text-blue-600 hover:underline truncate'
+                          >
+                            Change image
+                          </button>
+                          <button
+                            type='button'
+                            onClick={() => handleRemoveImage(idx)}
+                            className='text-xs text-red-600 hover:underline shrink-0'
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <div className='flex items-center gap-2 mt-1'>
+                          <button
+                            type='button'
+                            onClick={() => handleImageQuantityChange(idx, img.quantity - 1)}
+                            className='p-1 hover:bg-gray-100 rounded transition'
+                            aria-label={`Decrease quantity for image ${idx + 1}`}
+                          >
+                            <Minus size={12} />
+                          </button>
+                          <span className='px-2 py-0.5 bg-gray-700 text-white rounded font-bold text-xs min-w-[1.75rem] text-center'>
+                            {img.quantity}
+                          </span>
+                          <button
+                            type='button'
+                            onClick={() => handleImageQuantityChange(idx, img.quantity + 1)}
+                            className='p-1 hover:bg-gray-100 rounded transition'
+                            aria-label={`Increase quantity for image ${idx + 1}`}
+                          >
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
 
                   {/* Size - click to open the dimensions popup */}
-                  <div className='relative flex-1'>
+                  <div className='relative flex-none w-[270px]'>
                     <button
                       type='button'
                       onClick={() => setOpenPopup(openPopup === 'size' ? null : 'size')}
@@ -346,7 +519,7 @@ const OrderRigid = () => {
                       return (
                         <div
                           key={key}
-                          className='flex-1 flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 bg-gray-50'
+                          className='flex-none w-[270px] flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 bg-gray-50'
                         >
                           <span className='text-gray-400 font-medium text-sm tracking-wide'>{label}</span>
                           <button
@@ -368,7 +541,7 @@ const OrderRigid = () => {
                     }
 
                     return (
-                      <div key={key} className='relative flex-1'>
+                      <div key={key} className='relative flex-none w-[270px]'>
                         <button
                           type='button'
                           onClick={() => setOpenPopup(openPopup === key ? null : key)}

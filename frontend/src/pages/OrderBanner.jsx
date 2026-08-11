@@ -1,18 +1,39 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Loader, Plus, Minus } from 'lucide-react'
+import { Loader, Plus, Minus, ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import DashboardNavbar from '../components/DashboardNavbar'
+import ImageUpload from '../components/ImageUpload'
+import grommetIcon from '../assets/grommet.svg'
+
+// Pulls the current language's value out of a { en, fr } field. Falls back to
+// English, then to a plain string if the field isn't localized at all (keeps
+// this working for any older product data saved before translations were added).
+const getLocalizedField = (field, language, fallback) => {
+  if (field === null || field === undefined) return fallback
+  if (typeof field === 'object' && !Array.isArray(field)) {
+    return field[language] ?? field.en ?? fallback
+  }
+  return field
+}
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const OrderBanner = () => {
   const { productId } = useParams()
   const navigate = useNavigate()
-  
+  const { i18n } = useTranslation()
+  const language = i18n.language === 'fr' ? 'fr' : 'en'
+
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  // Uploaded image state
+  const [uploadedImage, setUploadedImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [showImageUploadModal, setShowImageUploadModal] = useState(false)
   
   // Dimensions state
   const [widthFt, setWidthFt] = useState(0)
@@ -22,6 +43,9 @@ const OrderBanner = () => {
   
   // Finish config state
   const [selectedConfig, setSelectedConfig] = useState({})
+
+  // How the uploaded image is positioned within its dimensions: 'fit' | 'center'
+  const [imageFit, setImageFit] = useState('fit')
   
   // Quantity state
   const [quantity, setQuantity] = useState(1)
@@ -49,11 +73,21 @@ const OrderBanner = () => {
         if (data.success) {
           setProduct(data.product)
           // Initialize selectedConfig with product finish config keys
-          const initialConfig = {}
+          const initialConfig = { imageFit: 'fit' }
           if (data.product.finishConfig && typeof data.product.finishConfig === 'object') {
             Object.keys(data.product.finishConfig).forEach((key) => {
               initialConfig[key] = data.product.finishConfig[key]
             })
+          }
+          if (initialConfig.grommets === true && !initialConfig.grommetPosition) {
+            initialConfig.grommetPosition = 'Top & Bottom'
+          }
+          // Rope requires welding true and grommets false; sanitize any invalid combo from the server
+          if (initialConfig.rope === true && (initialConfig.welding !== true || initialConfig.grommets === true)) {
+            initialConfig.rope = false
+          }
+          if (initialConfig.rope === true && !initialConfig.ropePosition) {
+            initialConfig.ropePosition = 'Top & Bottom'
           }
           setSelectedConfig(initialConfig)
           setError(null)
@@ -107,6 +141,110 @@ const OrderBanner = () => {
 
   const getAdjustedBasePrice = () => (product ? product.basePrice + getConfigSurcharge() : 0)
 
+  const handleImageSelect = (imageUrl) => {
+    setImagePreview(imageUrl)
+    setUploadedImage({ url: imageUrl })
+  }
+
+  const handleRemoveImage = () => {
+    setUploadedImage(null)
+    setImagePreview(null)
+  }
+
+  const handleImageFitChange = (newFit) => {
+    setImageFit(newFit)
+    setSelectedConfig({ ...selectedConfig, imageFit: newFit })
+  }
+
+  const handleGrommetPositionChange = (position) => {
+    setSelectedConfig({ ...selectedConfig, grommetPosition: position })
+  }
+
+  const handleRopePositionChange = (position) => {
+    setSelectedConfig({ ...selectedConfig, ropePosition: position })
+  }
+
+  // Whether grommets are active for the current selection, and where they go
+  const grommetsEnabled = selectedConfig.grommets === true
+  const grommetPosition = selectedConfig.grommetPosition || 'Top & Bottom'
+
+  // Whether rope is active for the current selection, and where it goes
+  const ropeEnabled = selectedConfig.rope === true
+  const ropePosition = selectedConfig.ropePosition || 'Top & Bottom'
+
+  // Rope requires welding true AND grommets already false.
+  // Grommets requires rope already false; welding has no bearing on grommets.
+  const weldingEnabled = (selectedConfig.welding !== undefined ? selectedConfig.welding : product?.finishConfig?.welding) === true
+  const canEnableRope = weldingEnabled && !grommetsEnabled
+  const canEnableGrommets = !ropeEnabled
+
+  // Builds the hover message explaining what needs to change before a toggle can be enabled.
+  const getDisabledReason = (key) => {
+    if (key === 'rope' && !canEnableRope) {
+      const needsWelding = !weldingEnabled
+      const needsGrommetsOff = grommetsEnabled
+      if (needsWelding && needsGrommetsOff) return 'To enable rope, enable welding and disable grommets'
+      if (needsWelding) return 'To enable rope, enable welding'
+      if (needsGrommetsOff) return 'To enable rope, disable grommets'
+    }
+    if (key === 'grommets' && !canEnableGrommets) {
+      return 'To enable grommets, disable rope'
+    }
+    return ''
+  }
+
+  // Shared handler for every boolean finish config toggle (grommets / rope / welding / etc).
+  // Keeps rope, grommets, and welding mutually consistent with each other.
+  const handleFinishConfigToggle = (key, currentValue) => {
+    const newValue = !currentValue
+    const updates = { ...selectedConfig, [key]: newValue }
+
+    if (key === 'rope' && newValue) {
+      if (!canEnableRope) {
+        toast.error(getDisabledReason('rope'))
+        return
+      }
+      if (!selectedConfig.ropePosition) {
+        updates.ropePosition = 'Top & Bottom'
+      }
+    }
+
+    if (key === 'grommets' && newValue) {
+      if (!canEnableGrommets) {
+        toast.error(getDisabledReason('grommets'))
+        return
+      }
+      if (!selectedConfig.grommetPosition) {
+        updates.grommetPosition = 'Top & Bottom'
+      }
+    }
+
+    if (key === 'welding' && !newValue && ropeEnabled) {
+      // Rope depends on welding being true, so turning welding off also turns rope off
+      updates.rope = false
+    }
+
+    setSelectedConfig(updates)
+  }
+
+  // Scales the actual sign dimensions down into a bounded preview box,
+  // preserving aspect ratio, so the preview matches real proportions.
+  const MAX_PREVIEW_SIZE = 340
+  const getPreviewBoxDimensions = () => {
+    const w = getTotalWidth()
+    const h = getTotalHeight()
+
+    if (!w || !h || Number.isNaN(w) || Number.isNaN(h)) {
+      return { width: MAX_PREVIEW_SIZE, height: MAX_PREVIEW_SIZE }
+    }
+
+    const aspect = w / h
+    if (aspect >= 1) {
+      return { width: MAX_PREVIEW_SIZE, height: MAX_PREVIEW_SIZE / aspect }
+    }
+    return { width: MAX_PREVIEW_SIZE * aspect, height: MAX_PREVIEW_SIZE }
+  }
+
   // Handle add to cart
   const handleAddToCart = async () => {
     try {
@@ -126,22 +264,29 @@ const OrderBanner = () => {
 
       setAddingToCart(true)
 
+      const requestBody = {
+        wholesaleSellerId: parseInt(sellerId),
+        productId: parseInt(productId),
+        quantity: parseInt(quantity),
+        width: getTotalWidth(),
+        height: getTotalHeight(),
+        size: [widthFt ? `${widthFt}ft` : '', widthIn ? `${widthIn}in` : '', heightFt ? `${heightFt}ft` : '', heightIn ? `${heightIn}in` : ''].filter(Boolean),
+        selectedFinishConfig: selectedConfig,
+        basePrice: getAdjustedBasePrice(),
+      }
+
+      // Add image URL instead of the uploaded file
+      if (imagePreview) {
+        requestBody.imageUrl = imagePreview
+      }
+
       const response = await fetch(`${BACKEND_URL}/api/order/add-to-cart`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          wholesaleSellerId: parseInt(sellerId),
-          productId: parseInt(productId),
-          quantity: parseInt(quantity),
-          width: getTotalWidth(),
-          height: getTotalHeight(),
-          size: [widthFt ? `${widthFt}ft` : '', widthIn ? `${widthIn}in` : '', heightFt ? `${heightFt}ft` : '', heightIn ? `${heightIn}in` : ''].filter(Boolean),
-          selectedFinishConfig: selectedConfig,
-          basePrice: getAdjustedBasePrice(),
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       const data = await response.json()
@@ -187,6 +332,11 @@ const OrderBanner = () => {
   return (
     <div>
       <DashboardNavbar />
+      <ImageUpload
+        isOpen={showImageUploadModal}
+        onClose={() => setShowImageUploadModal(false)}
+        onSelectImage={handleImageSelect}
+      />
       <div className='pt-34 md:pt-30 overflow-x-hidden min-h-screen'>
         {/* Grid Background */}
         <div className='relative bg-[#f0f0f0] min-h-screen'>
@@ -196,10 +346,10 @@ const OrderBanner = () => {
           <div className='relative px-6 py-8'>
             <div className='max-w-7xl mx-auto'>
               {/* Header Section */}
-              <div className='flex justify-between items-start mb-8'>
+              <div className='flex flex-col md:flex-row justify-between items-start mb-8 gap-4'>
                 <div>
-                  <h1 className='text-5xl font-bold text-gray-900 mb-2'>{product.name}</h1>
-                  <p className='text-gray-600'>{product.name} Banner, {getDimensionString()}</p>
+                  <h1 className='text-5xl font-bold text-gray-900 mb-2'>{getLocalizedField(product.name, language, 'Product')}</h1>
+                  <p className='text-gray-600'>{getLocalizedField(product.name, language, 'Product')} Banner, {getDimensionString()}</p>
                 </div>
                 <div className='text-right'>
                   <p className='text-5xl font-bold text-green-500'>${getAdjustedBasePrice().toFixed(2)}</p>
@@ -209,25 +359,196 @@ const OrderBanner = () => {
 
               {/* Main Content - single centered column */}
               <div className='max-w-4xl mx-auto'>
-                {/* Image Upload Box (dummy - no upload functionality) */}
-                <div className='relative border-2 border-dashed border-gray-400 rounded-lg h-96 flex flex-col items-center justify-center bg-white/60'>
-                  <p className='text-gray-400 text-lg tracking-wide'>PLEASE SPECIFY DIMENSIONS OR</p>
-                  <p className='text-gray-400 text-lg tracking-wide mb-8'>CLICK TO SELECT AN IMAGE</p>
-                  <svg className='w-16 h-16 text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                    <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' />
-                  </svg>
-                </div>
+                {/* Image Upload / Preview */}
+                {!imagePreview ? (
+                  <div
+                    onClick={() => setShowImageUploadModal(true)}
+                    className='relative border-2 border-dashed border-gray-400 rounded-lg h-96 flex flex-col items-center justify-center bg-white/60 cursor-pointer hover:bg-white/80 transition'
+                  >
+                    <p className='text-gray-400 text-lg tracking-wide'>PLEASE SPECIFY DIMENSIONS OR</p>
+                    <p className='text-gray-400 text-lg tracking-wide mb-8'>CLICK TO SELECT AN IMAGE</p>
+                    <svg className='w-16 h-16 text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' />
+                    </svg>
+                  </div>
+                ) : (
+                  <div className='flex flex-col items-center py-4 overflow-x-auto'>
+                    {/* Top label */}
+                    <div className='flex items-center gap-1 mb-2'>
+                      <ChevronDown size={12} className='text-gray-700' />
+                      <span className='text-sm font-bold text-gray-900'>TOP OF IMAGE</span>
+                      <ChevronDown size={12} className='text-gray-700' />
+                    </div>
+
+                    {/* Top width ruler */}
+                    <div className='flex items-center gap-1' style={{ width: `${getPreviewBoxDimensions().width}px` }}>
+                      <ChevronLeft size={12} className='text-gray-400' />
+                      <div className='flex-1 border-t border-gray-400' />
+                      <ChevronRight size={12} className='text-gray-400' />
+                    </div>
+                    <span className='text-xs text-gray-500 mb-1'>{getTotalWidth().toFixed(2)}"</span>
+
+                    <div className='flex items-center gap-2'>
+                      {/* Left height ruler */}
+                      <div className='flex flex-col items-center gap-1' style={{ height: `${getPreviewBoxDimensions().height}px` }}>
+                        <ChevronUp size={12} className='text-gray-400' />
+                        <div className='flex-1 border-l border-gray-400' />
+                        <ChevronDown size={12} className='text-gray-400' />
+                      </div>
+                      <span className='text-xs text-gray-500' style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                        {getTotalHeight().toFixed(2)}"
+                      </span>
+
+                      {/* Outer wrapper (no clipping) so rope tabs can pop out past the image edges */}
+                      <div className='relative' style={{ width: `${getPreviewBoxDimensions().width}px`, height: `${getPreviewBoxDimensions().height}px` }}>
+                        {/* Image with safe-zone outline - sized to actual proportions, live-updating */}
+                        <div className='relative border border-gray-800 bg-gray-100 overflow-hidden transition-all duration-300 ease-out w-full h-full'>
+                          <img
+                            src={imagePreview}
+                            alt='Uploaded artwork'
+                            className={imageFit === 'fit' ? 'w-full h-full object-contain' : 'w-full h-full'}
+                            style={imageFit === 'center' ? { objectFit: 'none', objectPosition: 'center' } : undefined}
+                          />
+                          {grommetsEnabled && (
+                            <>
+                              {(grommetPosition === 'Top' || grommetPosition === 'Top & Bottom') && (
+                                <>
+                                  <img src={grommetIcon} alt='Grommet' className='absolute top-1 left-1 w-5 h-5 pointer-events-none z-10' />
+                                  <img src={grommetIcon} alt='Grommet' className='absolute top-1 right-1 w-5 h-5 pointer-events-none z-10' />
+                                </>
+                              )}
+                              {(grommetPosition === 'Bottom' || grommetPosition === 'Top & Bottom') && (
+                                <>
+                                  <img src={grommetIcon} alt='Grommet' className='absolute bottom-1 left-1 w-5 h-5 pointer-events-none z-10' />
+                                  <img src={grommetIcon} alt='Grommet' className='absolute bottom-1 right-1 w-5 h-5 pointer-events-none z-10' />
+                                </>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {/* Rope tabs: pop out past the left/right edges instead of overlaying the artwork */}
+                        {ropeEnabled && (
+                          <>
+                            {(ropePosition === 'Top' || ropePosition === 'Top & Bottom') && (
+                              <>
+                                <div className='absolute -left-4 top-2 w-8 h-2 rounded-sm bg-amber-800/90 pointer-events-none z-10' />
+                                <div className='absolute -right-4 top-2 w-8 h-2 rounded-sm bg-amber-800/90 pointer-events-none z-10' />
+                              </>
+                            )}
+                            {(ropePosition === 'Bottom' || ropePosition === 'Top & Bottom') && (
+                              <>
+                                <div className='absolute -left-4 bottom-2 w-8 h-2 rounded-sm bg-amber-800/90 pointer-events-none z-10' />
+                                <div className='absolute -right-4 bottom-2 w-8 h-2 rounded-sm bg-amber-800/90 pointer-events-none z-10' />
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Right height ruler */}
+                      <span className='text-xs text-gray-500' style={{ writingMode: 'vertical-rl' }}>
+                        {getTotalHeight().toFixed(2)}"
+                      </span>
+                      <div className='flex flex-col items-center gap-1' style={{ height: `${getPreviewBoxDimensions().height}px` }}>
+                        <ChevronUp size={12} className='text-gray-400' />
+                        <div className='flex-1 border-l border-gray-400' />
+                        <ChevronDown size={12} className='text-gray-400' />
+                      </div>
+                    </div>
+
+                    {/* Bottom width ruler */}
+                    <span className='text-xs text-gray-500 mt-1'>{getTotalWidth().toFixed(2)}"</span>
+                    <div className='flex items-center gap-1' style={{ width: `${getPreviewBoxDimensions().width}px` }}>
+                      <ChevronLeft size={12} className='text-gray-400' />
+                      <div className='flex-1 border-t border-gray-400' />
+                      <ChevronRight size={12} className='text-gray-400' />
+                    </div>
+
+                    <p className='text-center text-gray-600 text-sm font-medium mt-3 mb-3'>Front Side</p>
+
+                    {/* Image fit + Grommet placement toggles, side by side */}
+                    <div className='flex flex-row flex-wrap items-center justify-center gap-4'>
+                      {/* Image fit: Center / Fit segmented toggle */}
+                      <div className='flex flex-col items-center'>
+                        <div className='inline-flex rounded-lg overflow-hidden border-2 border-green-600 scale-90'>
+                          <button
+                            type='button'
+                            onClick={() => handleImageFitChange('center')}
+                            className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
+                              imageFit === 'center' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 hover:bg-green-100'
+                            }`}
+                          >
+                            Center
+                          </button>
+                          <button
+                            type='button'
+                            onClick={() => handleImageFitChange('fit')}
+                            className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
+                              imageFit === 'fit' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 hover:bg-green-100'
+                            }`}
+                          >
+                            Fit
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Grommet placement: only shown when the grommets finish config is enabled */}
+                      {grommetsEnabled && (
+                        <div className='flex flex-col items-center'>
+                          <div className='inline-flex rounded-lg overflow-hidden border-2 border-blue-600 scale-90'>
+                            {['Top', 'Bottom', 'Top & Bottom'].map((position) => (
+                              <button
+                                key={position}
+                                type='button'
+                                onClick={() => handleGrommetPositionChange(position)}
+                                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
+                                  grommetPosition === position ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                }`}
+                              >
+                                {position}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Rope placement: only shown when the rope finish config is enabled */}
+                      {ropeEnabled && (
+                        <div className='flex flex-col items-center'>
+                          <div className='inline-flex rounded-lg overflow-hidden border-2 border-amber-700 scale-90'>
+                            {['Top', 'Bottom', 'Top & Bottom'].map((position) => (
+                              <button
+                                key={position}
+                                type='button'
+                                onClick={() => handleRopePositionChange(position)}
+                                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
+                                  ropePosition === position ? 'bg-amber-700 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+                                }`}
+                              >
+                                {position}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Info / Size / Config Boxes Row */}
-                <div className='relative flex gap-4 mt-4'>
-                  {/* Images (dummy, static) */}
-                  <div className='flex-1 flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white'>
+                <div className='relative flex flex-wrap gap-4 mt-4'>
+                  {/* Images - click to open the image library and select/change the artwork */}
+                  <button
+                    type='button'
+                    onClick={() => setShowImageUploadModal(true)}
+                    className='flex-none w-[270px] flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
+                  >
                     <span className='text-gray-600 font-medium text-sm tracking-wide'>IMAGES</span>
-                    <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm'>1</span>
-                  </div>
+                    <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm'>{uploadedImage ? '1' : '0'}</span>
+                  </button>
 
                   {/* Size - click to open the dimensions popup */}
-                  <div className='relative flex-1'>
+                  <div className='relative flex-none w-[270px]'>
                     <button
                       type='button'
                       onClick={() => setOpenPopup(openPopup === 'size' ? null : 'size')}
@@ -296,19 +617,24 @@ const OrderBanner = () => {
                     const currentValue = selectedConfig[key] !== undefined ? selectedConfig[key] : value
 
                     if (isBoolean) {
+                      const isRopeDisabled = key === 'rope' && !currentValue && !canEnableRope
+                      const isGrommetsDisabled = key === 'grommets' && !currentValue && !canEnableGrommets
+                      const isDisabled = isRopeDisabled || isGrommetsDisabled
+                      const disabledReason = isDisabled ? getDisabledReason(key) : ''
                       return (
                         <div
                           key={key}
-                          className='flex-1 flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 bg-gray-50'
+                          className='relative group flex-none w-[270px] flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 bg-gray-50'
                         >
                           <span className='text-gray-400 font-medium text-sm tracking-wide'>{label}</span>
                           <button
                             type='button'
-                            onClick={() => setSelectedConfig({ ...selectedConfig, [key]: !currentValue })}
+                            disabled={isDisabled}
+                            onClick={() => handleFinishConfigToggle(key, currentValue)}
                             aria-label={`Toggle ${label}`}
                             className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${
                               currentValue ? 'bg-gray-700' : 'bg-gray-300'
-                            }`}
+                            } ${isDisabled ? 'opacity-40 cursor-not-allowed' : ''}`}
                           >
                             <span
                               className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
@@ -316,12 +642,17 @@ const OrderBanner = () => {
                               }`}
                             />
                           </button>
+                          {isDisabled && (
+                            <div className='pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[240px] opacity-0 group-hover:opacity-100 transition bg-gray-900 text-white text-xs px-2.5 py-1.5 rounded-md shadow-lg z-20 text-center'>
+                              {disabledReason}
+                            </div>
+                          )}
                         </div>
                       )
                     }
 
                     return (
-                      <div key={key} className='relative flex-1'>
+                      <div key={key} className='relative flex-none w-[270px]'>
                         <button
                           type='button'
                           onClick={() => setOpenPopup(openPopup === key ? null : key)}

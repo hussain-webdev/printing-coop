@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { X, Loader } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
+import LanguageSwitcher from './LanguageSwitcher'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const SellerApplySidebar = ({ isOpen, onClose }) => {
+  const { t } = useTranslation()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -39,20 +42,20 @@ const SellerApplySidebar = ({ isOpen, onClose }) => {
 
   const validateForm = () => {
     const newErrors = {}
-    if (!formData.name.trim()) newErrors.name = 'Name is required'
-    if (!formData.email) newErrors.email = 'Email is required'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email format'
-    if (!formData.password) newErrors.password = 'Password is required'
-    else if (formData.password.length < 8) newErrors.password = 'Password must be at least 8 characters'
-    if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm password'
-    else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match'
-    if (!formData.phoneNumber) newErrors.phoneNumber = 'Phone number is required'
-    if (!formData.address.trim()) newErrors.address = 'Address is required'
-    if (!formData.companyName.trim()) newErrors.companyName = 'Company name is required'
-    if (!formData.country) newErrors.country = 'Country is required'
-    if (!formData.city.trim()) newErrors.city = 'City is required'
-    if (!formData.state.trim()) newErrors.state = 'State is required'
-    if (!formData.zipcode.trim()) newErrors.zipcode = 'Zipcode is required'
+    if (!formData.name.trim()) newErrors.name = t('sellerApply.nameRequired')
+    if (!formData.email) newErrors.email = t('auth.emailRequired')
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t('sellerApply.invalidEmail')
+    if (!formData.password) newErrors.password = t('auth.passwordRequired')
+    else if (formData.password.length < 8) newErrors.password = t('auth.passwordMin')
+    if (!formData.confirmPassword) newErrors.confirmPassword = t('auth.confirmPasswordRequired')
+    else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = t('auth.passwordsMatch')
+    if (!formData.phoneNumber) newErrors.phoneNumber = t('sellerApply.phoneRequired')
+    if (!formData.address.trim()) newErrors.address = t('sellerApply.addressRequired')
+    if (!formData.companyName.trim()) newErrors.companyName = t('sellerApply.companyRequired')
+    if (!formData.country) newErrors.country = t('sellerApply.countryRequired')
+    if (!formData.city.trim()) newErrors.city = t('sellerApply.cityRequired')
+    if (!formData.state.trim()) newErrors.state = t('sellerApply.stateRequired')
+    if (!formData.zipcode.trim()) newErrors.zipcode = t('sellerApply.zipcodeRequired')
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -97,16 +100,16 @@ const SellerApplySidebar = ({ isOpen, onClose }) => {
         localStorage.setItem('sellerId', data.id)
         localStorage.setItem('sellerName', formData.name.trim())
         localStorage.setItem('userType', 'wholesale-seller')
-        toast.success('Registration successful! Redirecting...')
+        toast.success(t('auth.registrationSuccess'))
         onClose()
         setTimeout(() => {
           window.location.href = '/dashboard-banner'
         }, 1000)
       } else {
-        toast.error(data.message || 'Registration failed. Please try again.')
+        toast.error(data.message || t('auth.registrationFailed'))
       }
     } catch (error) {
-      toast.error('Connection error. Please check your backend server.')
+      toast.error(t('auth.connectionError'))
       console.error('Registration error:', error)
     } finally {
       setLoading(false)
@@ -121,6 +124,7 @@ const SellerApplySidebar = ({ isOpen, onClose }) => {
       <div className={`fixed right-0 top-0 h-screen w-96 bg-white z-50 shadow-lg transition-transform duration-300 ease-in-out overflow-y-auto ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         {/* Close Button */}
         <div className='flex justify-end p-6 sticky top-0 bg-white z-10'>
+          <LanguageSwitcher />
           <button
             onClick={onClose}
             className='p-2 hover:bg-gray-100 rounded-lg transition'
@@ -131,51 +135,51 @@ const SellerApplySidebar = ({ isOpen, onClose }) => {
 
         {/* Form Content */}
         <div className='px-8 pb-12'>
-          <h1 className='text-4xl font-bold mb-8 text-black'>Apply</h1>
+          <h1 className='text-4xl font-bold mb-8 text-black'>{t('sellerApply.title')}</h1>
 
           <form onSubmit={handleSubmit} className='space-y-6'>
             {/* Personal Information Section */}
             <div className='space-y-6'>
-              <h2 className='text-lg font-semibold text-gray-700 mt-6'>Personal Information</h2>
+              <h2 className='text-lg font-semibold text-gray-700 mt-6'>{t('sellerApply.personalInformation')}</h2>
               
               {/* Name */}
               <div>
-                <label className='block text-black font-semibold mb-2 text-sm'>Name</label>
+                <label className='block text-black font-semibold mb-2 text-sm'>{t('sellerApply.name')}</label>
                 <input
                   type='text'
                   name='name'
                   value={formData.name}
                   onChange={handleChange}
                   className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                  placeholder='Full name'
+                  placeholder={t('sellerApply.fullName')}
                 />
                 {errors.name && <p className='text-red-500 text-xs mt-1'>{errors.name}</p>}
               </div>
 
               {/* Email */}
               <div>
-                <label className='block text-black font-semibold mb-2 text-sm'>Email</label>
+                <label className='block text-black font-semibold mb-2 text-sm'>{t('auth.email')}</label>
                 <input
                   type='email'
                   name='email'
                   value={formData.email}
                   onChange={handleChange}
                   className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                  placeholder='Email address'
+                  placeholder={t('auth.enterEmail')}
                 />
                 {errors.email && <p className='text-red-500 text-xs mt-1'>{errors.email}</p>}
               </div>
 
               {/* Phone Number */}
               <div>
-                <label className='block text-black font-semibold mb-2 text-sm'>Phone Number</label>
+                <label className='block text-black font-semibold mb-2 text-sm'>{t('sellerApply.phoneNumber')}</label>
                 <input
                   type='tel'
                   name='phoneNumber'
                   value={formData.phoneNumber}
                   onChange={handleChange}
                   className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                  placeholder='Phone number'
+                  placeholder={t('sellerApply.phoneNumber')}
                 />
                 {errors.phoneNumber && <p className='text-red-500 text-xs mt-1'>{errors.phoneNumber}</p>}
               </div>
@@ -183,77 +187,77 @@ const SellerApplySidebar = ({ isOpen, onClose }) => {
 
             {/* Company Information Section */}
             <div className='space-y-6'>
-              <h2 className='text-lg font-semibold text-gray-700 mt-6'>Company Information</h2>
+              <h2 className='text-lg font-semibold text-gray-700 mt-6'>{t('sellerApply.companyInformation')}</h2>
               
               {/* Company Name */}
               <div>
-                <label className='block text-black font-semibold mb-2 text-sm'>Company Name</label>
+                <label className='block text-black font-semibold mb-2 text-sm'>{t('sellerApply.companyName')}</label>
                 <input
                   type='text'
                   name='companyName'
                   value={formData.companyName}
                   onChange={handleChange}
                   className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                  placeholder='Company name'
+                  placeholder={t('sellerApply.companyName')}
                 />
                 {errors.companyName && <p className='text-red-500 text-xs mt-1'>{errors.companyName}</p>}
               </div>
 
               {/* Website */}
               <div>
-                <label className='block text-black font-semibold mb-2 text-sm'>Website (Optional)</label>
+                <label className='block text-black font-semibold mb-2 text-sm'>{t('sellerApply.website')}</label>
                 <input
                   type='url'
                   name='website'
                   value={formData.website}
                   onChange={handleChange}
                   className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                  placeholder='Website URL'
+                  placeholder={t('sellerApply.websiteUrl')}
                 />
               </div>
             </div>
 
             {/* Address Information Section */}
             <div className='space-y-6'>
-              <h2 className='text-lg font-semibold text-gray-700 mt-6'>Address Information</h2>
+              <h2 className='text-lg font-semibold text-gray-700 mt-6'>{t('sellerApply.addressInformation')}</h2>
               
               {/* Address */}
               <div>
-                <label className='block text-black font-semibold mb-2 text-sm'>Address</label>
+                <label className='block text-black font-semibold mb-2 text-sm'>{t('sellerApply.address')}</label>
                 <input
                   type='text'
                   name='address'
                   value={formData.address}
                   onChange={handleChange}
                   className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                  placeholder='Street address'
+                  placeholder={t('sellerApply.streetAddress')}
                 />
                 {errors.address && <p className='text-red-500 text-xs mt-1'>{errors.address}</p>}
               </div>
 
               {/* Address 2 */}
               <div>
-                <label className='block text-black font-semibold mb-2 text-sm'>Address 2 (Optional)</label>
+                <label className='block text-black font-semibold mb-2 text-sm'>{t('sellerApply.address2')}</label>
                 <input
                   type='text'
                   name='address2'
                   value={formData.address2}
                   onChange={handleChange}
                   className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                  placeholder='Apartment, suite, etc.'
+                  placeholder={t('sellerApply.apartment')}
                 />
               </div>
 
               {/* Country */}
               <div>
-                <label className='block text-black font-semibold mb-2 text-sm'>Country</label>
+                <label className='block text-black font-semibold mb-2 text-sm'>{t('sellerApply.country')}</label>
                 <input
                   type='text'
                   name='country'
                   value={formData.country}
                   onChange={handleChange}
                   className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                  placeholder='Country'
+                  placeholder={t('sellerApply.country')}
                 />
                 {errors.country && <p className='text-red-500 text-xs mt-1'>{errors.country}</p>}
               </div>
@@ -261,26 +265,26 @@ const SellerApplySidebar = ({ isOpen, onClose }) => {
               {/* City and State */}
               <div className='grid grid-cols-2 gap-4'>
                 <div>
-                  <label className='block text-black font-semibold mb-2 text-sm'>City</label>
+                  <label className='block text-black font-semibold mb-2 text-sm'>{t('sellerApply.city')}</label>
                   <input
                     type='text'
                     name='city'
                     value={formData.city}
                     onChange={handleChange}
                     className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                    placeholder='City'
+                    placeholder={t('sellerApply.city')}
                   />
                   {errors.city && <p className='text-red-500 text-xs mt-1'>{errors.city}</p>}
                 </div>
                 <div>
-                  <label className='block text-black font-semibold mb-2 text-sm'>State</label>
+                  <label className='block text-black font-semibold mb-2 text-sm'>{t('sellerApply.state')}</label>
                   <input
                     type='text'
                     name='state'
                     value={formData.state}
                     onChange={handleChange}
                     className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                    placeholder='State'
+                    placeholder={t('sellerApply.state')}
                   />
                   {errors.state && <p className='text-red-500 text-xs mt-1'>{errors.state}</p>}
                 </div>
@@ -288,14 +292,14 @@ const SellerApplySidebar = ({ isOpen, onClose }) => {
 
               {/* Zipcode */}
               <div>
-                <label className='block text-black font-semibold mb-2 text-sm'>Zipcode</label>
+                <label className='block text-black font-semibold mb-2 text-sm'>{t('sellerApply.zipcode')}</label>
                 <input
                   type='text'
                   name='zipcode'
                   value={formData.zipcode}
                   onChange={handleChange}
                   className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                  placeholder='Zipcode'
+                  placeholder={t('sellerApply.zipcode')}
                 />
                 {errors.zipcode && <p className='text-red-500 text-xs mt-1'>{errors.zipcode}</p>}
               </div>
@@ -303,32 +307,32 @@ const SellerApplySidebar = ({ isOpen, onClose }) => {
 
             {/* Security Information Section */}
             <div className='space-y-6'>
-              <h2 className='text-lg font-semibold text-gray-700 mt-6'>Security Information</h2>
+              <h2 className='text-lg font-semibold text-gray-700 mt-6'>{t('sellerApply.securityInformation')}</h2>
               
               {/* Password */}
               <div>
-                <label className='block text-black font-semibold mb-2 text-sm'>Password</label>
+                <label className='block text-black font-semibold mb-2 text-sm'>{t('auth.password')}</label>
                 <input
                   type='password'
                   name='password'
                   value={formData.password}
                   onChange={handleChange}
                   className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                  placeholder='Password (min 8 characters)'
+                  placeholder={t('auth.enterPassword')}
                 />
                 {errors.password && <p className='text-red-500 text-xs mt-1'>{errors.password}</p>}
               </div>
 
               {/* Confirm Password */}
               <div>
-                <label className='block text-black font-semibold mb-2 text-sm'>Confirm Password</label>
+                <label className='block text-black font-semibold mb-2 text-sm'>{t('auth.confirmPassword')}</label>
                 <input
                   type='password'
                   name='confirmPassword'
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   className='w-full px-3 py-2 border-b-2 border-gray-300  focus:outline-none focus:border-green-500 text-black text-sm'
-                  placeholder='Confirm password'
+                  placeholder={t('auth.enterConfirmPassword')}
                 />
                 {errors.confirmPassword && <p className='text-red-500 text-xs mt-1'>{errors.confirmPassword}</p>}
               </div>
@@ -344,10 +348,10 @@ const SellerApplySidebar = ({ isOpen, onClose }) => {
                 {loading ? (
                   <>
                     <Loader size={18} className='animate-spin' />
-                    Creating Account...
+                    {t('sellerApply.creatingAccount')}
                   </>
                 ) : (
-                  'Apply'
+                  t('sellerApply.apply')
                 )}
               </button>
             </div>

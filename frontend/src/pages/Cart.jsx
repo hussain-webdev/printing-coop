@@ -8,8 +8,20 @@ import Footer from '../components/Footer'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
+// Pulls the current language's value out of a { en, fr } field. Falls back to
+// English, then to a plain string if the field isn't localized at all (keeps
+// this working for any older product data saved before translations were added).
+const getLocalizedField = (field, language, fallback) => {
+  if (field === null || field === undefined) return fallback
+  if (typeof field === 'object' && !Array.isArray(field)) {
+    return field[language] ?? field.en ?? fallback
+  }
+  return field
+}
+
 const Cart = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const language = i18n.language === 'fr' ? 'fr' : 'en'
   const navigate = useNavigate()
   const [cartItems, setCartItems] = useState([])
   const [loading, setLoading] = useState(true)
@@ -236,8 +248,8 @@ const Cart = () => {
                   <div className='grid grid-cols-[3fr_1.2fr_1.4fr_0.8fr_0.8fr_0.8fr] gap-4 items-start'>
                     {/* Product name */}
                     <div>
-                      <p className='font-medium text-gray-900'>{item.product?.name}</p>
-                      <p className='text-sm text-gray-600 mt-1'>{item.product?.materials}</p>
+                      <p className='font-medium text-gray-900'>{getLocalizedField(item.product?.name, language, '')}</p>
+                      <p className='text-sm text-gray-600 mt-1'>{getLocalizedField(item.product?.materials, language, '')}</p>
                     </div>
 
                     {/* Size */}
@@ -304,14 +316,35 @@ const Cart = () => {
                     </div>
                   </div>
 
-                  {/* Product image */}
-                  {item.product?.images && item.product.images.length > 0 && (
+                  {/* Cart item images - duplicate URLs (e.g. rigid products with up to 10
+                      cells but repeated images) are grouped and shown once with a "x N" badge */}
+                  {item.images && item.images.length > 0 && (
                     <div className='mt-4'>
-                      <img
-                        src={item.product.images[0].url}
-                        alt={item.product.name}
-                        className='w-28 h-28 object-cover rounded border border-gray-200'
-                      />
+                      <div className='flex gap-3 flex-wrap'>
+                        {Object.values(
+                          item.images.reduce((acc, image) => {
+                            const key = image.url
+                            if (!acc[key]) {
+                              acc[key] = { url: image.url, count: 0 }
+                            }
+                            acc[key].count += 1
+                            return acc
+                          }, {})
+                        ).map((groupedImage, index) => (
+                          <div key={index} className='relative'>
+                            <img
+                              src={groupedImage.url}
+                              alt={`${getLocalizedField(item.product?.name, language, 'Product')} - Image ${index + 1}`}
+                              className='h-28'
+                            />
+                            {groupedImage.count > 1 && (
+                              <span className='absolute bottom-1 right-1 bg-black/70 text-white text-xs font-semibold px-1.5 py-0.5 rounded'>
+                                x {groupedImage.count}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

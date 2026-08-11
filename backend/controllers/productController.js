@@ -1,6 +1,6 @@
 import { getRedisClient } from '../config/redis.js';
 import prisma from '../config/prisma.js';
-import { v2 as cloudinary } from 'cloudinary';
+import { uploadToS3 } from '../config/s3.js';
 import fs from 'fs';
 
 // Helper function to parse JSON safely
@@ -15,17 +15,36 @@ const parseJSON = (value) => {
   }
 };
 
-// Add a new product with image and logo upload
+// Add a new product with image and logo upload to S3
 const addProduct = async (req, res) => {
   try {
     const { name, basePrice, category, description, materials, finishConfig, commonUses, options, environment } = req.body;
 
+    // FormData values arrive as strings, so parse all JSONB translation fields.
+    const parsedName = parseJSON(name);
+    const parsedDescription = description === undefined || description === '' ? null : parseJSON(description);
+    const parsedMaterials = materials === undefined || materials === '' ? null : parseJSON(materials);
+    const parsedCommonUses = commonUses === undefined || commonUses === '' ? null : parseJSON(commonUses);
+    const parsedOptions = options === undefined || options === '' ? null : parseJSON(options);
+    const parsedEnvironment = environment === undefined || environment === '' ? null : parseJSON(environment);
+
+    const isTranslationMap = (value) => value && typeof value === 'object' && !Array.isArray(value);
+
     // Validate required fields
-    if (!name || !basePrice || !category || !finishConfig) {
-      return res.json({ 
-        success: false, 
-        message: 'All fields (name, basePrice, category, finishConfig) are required' 
+    if (!isTranslationMap(parsedName) || !basePrice || !category || !finishConfig) {
+      return res.json({
+        success: false,
+        message: 'name must be a JSON translation object, and basePrice, category, finishConfig are required',
       });
+    }
+
+    for (const [fieldName, value] of Object.entries({ description: parsedDescription, materials: parsedMaterials, commonUses: parsedCommonUses, options: parsedOptions, environment: parsedEnvironment })) {
+      if (value !== null && !isTranslationMap(value)) {
+        return res.json({
+          success: false,
+          message: `${fieldName} must be a valid JSON translation object`,
+        });
+      }
     }
 
     // Validate and parse numeric basePrice
@@ -46,12 +65,8 @@ const addProduct = async (req, res) => {
       });
     }
 
-    // Parse optional JSON fields
-    const parsedCommonUses = parseJSON(commonUses);
-    const parsedOptions = parseJSON(options);
-    const parsedEnvironment = parseJSON(environment);
 
-    // Handle product images upload
+    // Handle product images upload to S3
     const imageUrls = [];
     let logoUrl = null;
 
@@ -64,23 +79,20 @@ const addProduct = async (req, res) => {
     if (allFiles.length > 0) {
       for (const file of allFiles) {
         try {
-          console.log('[v0] Uploading file to Cloudinary:', file.originalname);
+          console.log('[v0] Uploading file to S3:', file.originalname);
           
           // Determine folder based on filename - if it contains 'logo', upload to logo folder
           const isLogo = file.fieldname === 'logo';
           const folder = isLogo ? 'printing-coop/products/logos' : 'printing-coop/products';
 
-          const result = await cloudinary.uploader.upload(file.path, {
-            folder: folder,
-            resource_type: 'auto',
-          });
+          const result = await uploadToS3(file.path, file.originalname, folder);
 
           if (isLogo) {
-            logoUrl = result.secure_url;
+            logoUrl = result.url;
           } else {
             imageUrls.push({
-              url: result.secure_url,
-              publicId: result.public_id,
+              url: result.url,
+              key: result.key, // Store S3 key for potential future deletion
             });
           }
 
@@ -89,9 +101,9 @@ const addProduct = async (req, res) => {
             if (err) console.log('[v0] Error deleting temp file:', err);
           });
 
-          console.log('[v0] File uploaded successfully:', result.secure_url);
+          console.log('[v0] File uploaded successfully to S3:', result.url);
         } catch (uploadError) {
-          console.log('[v0] Error uploading file to Cloudinary:', uploadError);
+          console.log('[v0] Error uploading file to S3:', uploadError);
           fs.unlink(file.path, (err) => {
             if (err) console.log('[v0] Error deleting temp file:', err);
           });
@@ -107,11 +119,11 @@ const addProduct = async (req, res) => {
     // Create product in database
     const product = await prisma.product.create({
       data: {
-        name,
+        name: parsedName,
         basePrice: parsedBasePrice,
         category,
-        description: description || null,
-        materials: materials || null,
+        description: parsedDescription,
+        materials: parsedMaterials,
         logo: logoUrl,
         finishConfig: parsedFinishConfig,
         images: imageUrls.length > 0 ? imageUrls : [],
