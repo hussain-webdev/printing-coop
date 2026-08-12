@@ -119,6 +119,22 @@
     "phone": "(800) 000-0000",
     "customerServiceHours": "Horaires du service client"
   },
+  "imageZone": {
+    "title": "Zone d'images",
+    "selectImage": "Sélectionner une image",
+    "uploadImage": "Télécharger une image",
+    "uploading": "Téléchargement...",
+    "createFolder": "Créer un dossier",
+    "renameFolder": "Renommer le dossier",
+    "deleteFolder": "Supprimer le dossier",
+    "searchImages": "Rechercher des images",
+    "sort": "Trier",
+    "date": "Date",
+    "name": "Nom",
+    "noImages": "Aucune image dans ce dossier. Téléchargez votre première image pour commencer.",
+    "loginRequired": "Veuillez vous connecter pour accéder aux images",
+    "imageDeleted": "Image supprimée avec succès"
+  },
   "orderConfirm": {
     "title": "Confirmation de commande",
     "successMessage": "Commande passée avec succès !",

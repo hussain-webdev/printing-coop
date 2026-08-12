@@ -60,8 +60,21 @@ const generateOrderNumber = () => {
 };
 
 // Function to send order confirmation email
-const sendOrderConfirmationEmail = async (sellerEmail, sellerName, order) => {
+const sendOrderConfirmationEmail = async (sellerEmail, sellerName, order, lang = 'en') => {
   try {
+    const language = lang === 'fr' ? 'fr' : 'en';
+    const content = language === 'fr' ? {
+      subject: `Confirmation de commande - ${order.orderNumber}`,
+      title: 'Confirmation de commande',
+      greeting: `Bonjour ${sellerName},`,
+      intro: 'Merci pour votre commande ! Nous avons reçu votre paiement et votre commande est en cours de traitement.',
+      details: 'Détails de la commande', date: 'Date de commande', method: 'Mode de paiement', status: 'Statut du paiement', paid: 'Payé',
+      items: 'Articles commandés', product: 'Produit', quantity: 'Quantité', price: 'Prix', subtotal: 'Sous-total', shipping: 'Livraison', total: 'Total', address: 'Adresse de livraison', next: 'Quelle est la prochaine étape ?', nextText: 'Votre commande est en préparation. Vous recevrez une notification avec les informations de suivi dès son expédition.', regards: 'Cordialement,', support: 'Pour toute question concernant votre commande, contactez-nous à support@trading.printing.coop',
+    } : {
+      subject: `Order Confirmation - ${order.orderNumber}`,
+      title: 'Order Confirmation', greeting: `Hi ${sellerName},`, intro: 'Thank you for your order! We have received your payment and your order is now being processed.',
+      details: 'Order Details', date: 'Order Date', method: 'Payment Method', status: 'Payment Status', paid: 'Paid', items: 'Items Ordered', product: 'Product', quantity: 'Quantity', price: 'Price', subtotal: 'Subtotal', shipping: 'Shipping', total: 'Total', address: 'Shipping Address', next: "What's Next?", nextText: 'Your order is being prepared for shipment. You will receive a shipping notification with tracking information once your order ships.', regards: 'Best regards,', support: 'If you have any questions about your order, please contact us at support@trading.printing.coop',
+    };
     const itemsHTML = order.orderItems
       .map((item) => `
         <tr style="border-bottom: 1px solid #ddd;">
@@ -75,31 +88,29 @@ const sendOrderConfirmationEmail = async (sellerEmail, sellerName, order) => {
     const response = await resend.emails.send({
       from: 'noreply@trading.printing.coop',
       to: sellerEmail,
-      subject: `Order Confirmation - ${order.orderNumber}`,
+subject: content.subject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">Order Confirmation</h2>
-          <p style="color: #666; font-size: 16px;">Hi ${sellerName},</p>
-          <p style="color: #666; font-size: 16px;">
-            Thank you for your order! We have received your payment and your order is now being processed.
-          </p>
+<h2 style="color: #333;">${content.title}</h2>
+          <p style="color: #666; font-size: 16px;">${content.greeting}</p>
+          <p style="color: #666; font-size: 16px;">${content.intro}</p>
           
           <div style="margin: 30px 0; background-color: #f5f5f5; padding: 20px; border-radius: 5px;">
-            <h3 style="color: #333; margin-top: 0;">Order Details</h3>
+<h3 style="color: #333; margin-top: 0;">${content.details}</h3>
             <p><strong>Order Number:</strong> ${order.orderNumber}</p>
-            <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString()}</p>
-            <p><strong>Payment Method:</strong> ${order.paymentMethod || 'PayPal'}</p>
-            <p><strong>Payment Status:</strong> <span style="color: #28a745; font-weight: bold;">Paid</span></p>
+            <p><strong>${content.date}:</strong> ${new Date(order.createdAt).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}</p>
+            <p><strong>${content.method}:</strong> ${order.paymentMethod || 'Stripe'}</p>
+            <p><strong>${content.status}:</strong> <span style="color: #28a745; font-weight: bold;">${content.paid}</span></p>
           </div>
 
           <div style="margin: 30px 0;">
-            <h3 style="color: #333;">Items Ordered</h3>
+            <h3 style="color: #333;">${content.items}</h3>
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
                 <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
-                  <th style="padding: 12px; text-align: left;">Product</th>
-                  <th style="padding: 12px; text-align: center;">Quantity</th>
-                  <th style="padding: 12px; text-align: right;">Price</th>
+<th style="padding: 12px; text-align: left;">${content.product}</th>
+                  <th style="padding: 12px; text-align: center;">${content.quantity}</th>
+                  <th style="padding: 12px; text-align: right;">${content.price}</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,21 +121,21 @@ const sendOrderConfirmationEmail = async (sellerEmail, sellerName, order) => {
 
           <div style="margin: 30px 0; background-color: #f5f5f5; padding: 20px; border-radius: 5px;">
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-              <span>Subtotal:</span>
+              <span>${content.subtotal}:</span>
               <span>$${order.subtotal?.toFixed(2) || '0.00'}</span>
             </div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-              <span>Shipping:</span>
+              <span>${content.shipping}:</span>
               <span>$${order.shippingCost?.toFixed(2) || '0.00'}</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; border-top: 1px solid #ddd; padding-top: 10px;">
-              <span>Total:</span>
+              <span>${content.total}:</span>
               <span>$${order.total?.toFixed(2) || '0.00'}</span>
             </div>
           </div>
 
           <div style="margin: 30px 0;">
-            <h3 style="color: #333;">Shipping Address</h3>
+            <h3 style="color: #333;">${content.address}</h3>
             <p style="color: #666;">
               ${order.shippingAddress?.name || ''}<br/>
               ${order.shippingAddress?.address || ''}<br/>
@@ -135,15 +146,15 @@ const sendOrderConfirmationEmail = async (sellerEmail, sellerName, order) => {
 
           <div style="margin: 30px 0; padding: 20px; background-color: #e8f4f8; border-radius: 5px;">
             <p style="color: #333; margin: 0;">
-              <strong>What's Next?</strong><br/>
-              Your order is being prepared for shipment. You will receive a shipping notification with tracking information once your order ships.
+<strong>${content.next}</strong><br/>
+              ${content.nextText}
             </p>
           </div>
 
           <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
             <p style="color: #999; font-size: 14px;">
-              If you have any questions about your order, please contact us at support@trading.printing.coop<br/>
-              <strong>Trading & Printing Coop Team</strong>
+${content.support}<br/>
+              <strong>${content.regards}<br/>Trading & Printing Coop Team</strong>
             </p>
           </div>
         </div>
@@ -1050,7 +1061,7 @@ const createStripePaymentIntentController = async (req, res) => {
 // Step 2: Confirm the Stripe payment and, if successful, create the DB order + clear cart.
 const confirmStripePaymentController = async (req, res) => {
   try {
-    const { paymentIntentId, wholesaleSellerId, shippingCost, shippingAddress, orderItems } = req.body;
+    const { paymentIntentId, wholesaleSellerId, shippingCost, shippingAddress, orderItems, lang = 'en' } = req.body;
 
     if (!paymentIntentId || !wholesaleSellerId || shippingCost === undefined || !shippingAddress || !orderItems) {
       return res.json({
@@ -1141,7 +1152,7 @@ const confirmStripePaymentController = async (req, res) => {
     });
 
     if (sellerData) {
-      await sendOrderConfirmationEmail(sellerData.email, sellerData.name, order);
+      await sendOrderConfirmationEmail(sellerData.email, sellerData.name, order, lang);
     }
 
     res.json({
@@ -1158,7 +1169,7 @@ const confirmStripePaymentController = async (req, res) => {
 
 const chargeAuthorizeNetController = async (req, res) => {
   try {
-    const { paymentNonce, wholesaleSellerId, shippingCost, shippingAddress, orderItems } = req.body;
+    const { paymentNonce, wholesaleSellerId, shippingCost, shippingAddress, orderItems, lang = 'en' } = req.body;
     if (!paymentNonce || !wholesaleSellerId || shippingCost === undefined || !shippingAddress || !orderItems) {
       return res.json({ success: false, message: 'paymentNonce, wholesaleSellerId, shippingCost, shippingAddress, and orderItems are required' });
     }
@@ -1203,7 +1214,7 @@ const chargeAuthorizeNetController = async (req, res) => {
       await redisClient.setEx(`order:${order.id}`, 3600, JSON.stringify(order));
     }
     const sellerData = await prisma.wholesaleSeller.findUnique({ where: { id: sellerId }, select: { email: true, name: true } });
-    if (sellerData) await sendOrderConfirmationEmail(sellerData.email, sellerData.name, order);
+    if (sellerData) await sendOrderConfirmationEmail(sellerData.email, sellerData.name, order, lang);
 
     return res.json({ success: true, message: 'Authorize.net payment successful and order placed', order, authorizeNetTransactionId: payment.transactionId });
   } catch (error) {

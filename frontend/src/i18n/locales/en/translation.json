@@ -119,6 +119,22 @@
     "phone": "(800) 000-0000",
     "customerServiceHours": "Customer Service Hours"
   },
+  "imageZone": {
+    "title": "Image Zone",
+    "selectImage": "Select Image",
+    "uploadImage": "Upload Image",
+    "uploading": "Uploading...",
+    "createFolder": "Create Folder",
+    "renameFolder": "Rename Folder",
+    "deleteFolder": "Delete Folder",
+    "searchImages": "Search Images",
+    "sort": "Sort",
+    "date": "Date",
+    "name": "Name",
+    "noImages": "No images in this folder. Upload your first image to get started.",
+    "loginRequired": "Please login to access images",
+    "imageDeleted": "Image deleted successfully"
+  },
   "orderConfirm": {
     "title": "Order Confirmation",
     "successMessage": "Order Placed Successfully!",

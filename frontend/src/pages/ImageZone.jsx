@@ -139,7 +139,7 @@ const ImageZone = () => {
         }
 
         setFolders(imageData)
-        toast.success('Image deleted successfully')
+        toast.success(t('imageZone.imageDeleted'))
       } else {
         toast.error(data.message || 'Failed to delete image')
       }
@@ -349,7 +349,7 @@ const ImageZone = () => {
       <DashboardNavbar />
       <div className='pt-34 md:pt-30 pb-24'>
         <div className='p-4'>
-          <h1 className='pb-4 font-light text-2xl'>Image Zone</h1>
+          <h1 className='pb-4 font-light text-2xl'>{t('imageZone.title')}</h1>
 
           {/* Toolbar */}
           <div className='flex flex-wrap items-center gap-2 pb-4 mb-4 border-b border-gray-200'>
@@ -381,16 +381,16 @@ const ImageZone = () => {
               className='px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white text-sm font-semibold uppercase tracking-wide rounded transition flex items-center gap-2'
             >
               {uploading ? <Loader size={16} className='animate-spin' /> : <Upload size={16} />}
-              {uploading ? 'Uploading...' : 'Upload Image'}
+              {uploading ? t('imageZone.uploading') : t('imageZone.uploadImage')}
             </button>
 
-            {/* Create Folder */}
+            {/* {t('imageZone.createFolder')} */}
             <button
               onClick={() => setShowCreateFolderModal(true)}
               className='px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold uppercase tracking-wide rounded transition flex items-center gap-2'
             >
               <FolderPlus size={16} />
-              Create Folder
+              {t('imageZone.createFolder')}
             </button>
 
             {/* Rename Folder */}
@@ -434,7 +434,7 @@ const ImageZone = () => {
               <Search size={16} className='absolute left-3 top-2.5 text-gray-400' />
               <input
                 type='text'
-                placeholder='Search Images'
+                placeholder={t('imageZone.searchImages')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className='w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
@@ -447,7 +447,7 @@ const ImageZone = () => {
                 onClick={() => setOpenFilterMenu(openFilterMenu === 'sort' ? null : 'sort')}
                 className='flex items-center gap-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 transition'
               >
-                Sort: {sortBy === 'date' ? 'Date' : 'Name'}
+                {t('imageZone.sort')}: {sortBy === 'date' ? t('imageZone.date') : t('imageZone.name')}
                 <ChevronDown size={14} />
               </button>
               {openFilterMenu === 'sort' && (
@@ -523,13 +523,13 @@ const ImageZone = () => {
             </div>
           ) : (
             <div className='bg-gray-50 border border-gray-200 rounded-lg p-6'>
-              <p className='text-gray-700'>No images in this folder. Upload your first image to get started.</p>
+              <p className='text-gray-700'>{t('imageZone.noImages')}</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Create Folder Modal */}
+      {/* {t('imageZone.createFolder')} Modal */}
       {showCreateFolderModal && (
         <div className='fixed inset-0 bg-[#0000006f] flex items-center justify-center z-50'>
           <div className='bg-white rounded-lg p-6 w-96 shadow-lg'>

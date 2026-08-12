@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Loader, Search, ChevronDown, Upload, FolderPlus, Edit2, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import ImageCard from './ImageCard'
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const ImageUpload = ({ isOpen, onClose, onSelectImage }) => {
+  const { t } = useTranslation()
   const [folders, setFolders] = useState({ Home: [] })
   const [currentFolder, setCurrentFolder] = useState('Home')
   const [loading, setLoading] = useState(true)
@@ -27,7 +29,7 @@ const ImageUpload = ({ isOpen, onClose, onSelectImage }) => {
       const token = localStorage.getItem('sellerToken')
 
       if (!sellerId || !token) {
-        toast.error('Please login to access images')
+        toast.error(t('imageZone.loginRequired'))
         setLoading(false)
         return
       }
@@ -337,7 +339,7 @@ const ImageUpload = ({ isOpen, onClose, onSelectImage }) => {
       <div className='bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto'>
         {/* Modal Header */}
         <div className='sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between'>
-          <h2 className='text-xl font-semibold'>Select Image</h2>
+          <h2 className='text-xl font-semibold'>{t('imageZone.selectImage')}</h2>
           <button
             onClick={onClose}
             className='p-1 hover:bg-gray-100 rounded transition'
@@ -357,7 +359,7 @@ const ImageUpload = ({ isOpen, onClose, onSelectImage }) => {
               className='px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white text-sm font-semibold uppercase tracking-wide rounded transition flex items-center gap-2'
             >
               {uploading ? <Loader size={16} className='animate-spin' /> : <Upload size={16} />}
-              {uploading ? 'Uploading...' : 'Upload Image'}
+              {uploading ? t('imageZone.uploading') : t('imageZone.uploadImage')}
             </button>
 
             <input
@@ -392,7 +394,7 @@ const ImageUpload = ({ isOpen, onClose, onSelectImage }) => {
               className='px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold uppercase rounded transition flex items-center gap-2'
             >
               <FolderPlus size={16} />
-              Create Folder
+              {t('imageZone.createFolder')}
             </button>
 
             {currentFolder !== 'Home' && (
@@ -423,7 +425,7 @@ const ImageUpload = ({ isOpen, onClose, onSelectImage }) => {
               <Search size={16} className='absolute left-3 top-2.5 text-gray-400' />
               <input
                 type='text'
-                placeholder='Search Images'
+                placeholder={t('imageZone.searchImages')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className='w-full pl-9 pr-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
@@ -497,13 +499,13 @@ const ImageUpload = ({ isOpen, onClose, onSelectImage }) => {
             </div>
           ) : (
             <div className='bg-gray-50 border border-gray-200 rounded-lg p-6'>
-              <p className='text-gray-700'>No images in this folder. Upload your first image to get started.</p>
+              <p className='text-gray-700'>{t('imageZone.noImages')}</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Create Folder Modal */}
+      {/* {t('imageZone.createFolder')} Modal */}
       {showCreateFolderModal && (
         <div className='fixed inset-0 bg-black/70 z-50 flex items-center justify-center'>
           <div className='bg-white rounded-lg p-6 w-96'>

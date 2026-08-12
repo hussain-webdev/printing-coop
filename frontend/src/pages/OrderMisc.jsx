@@ -2,14 +2,28 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Loader, Plus, Minus } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 import DashboardNavbar from '../components/DashboardNavbar'
 import ImageUpload from '../components/ImageUpload'
+
+// Pulls the current language's value out of a { en, fr } field. Falls back to
+// English, then to a plain string if the field isn't localized at all (keeps
+// this working for any older product data saved before translations were added).
+const getLocalizedField = (field, language, fallback) => {
+  if (field === null || field === undefined) return fallback
+  if (typeof field === 'object' && !Array.isArray(field)) {
+    return field[language] ?? field.en ?? fallback
+  }
+  return field
+}
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
 
 const OrderMisc = () => {
   const { productId } = useParams()
   const navigate = useNavigate()
+  const { i18n } = useTranslation()
+  const language = i18n.language === 'fr' ? 'fr' : 'en'
   
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -262,8 +276,8 @@ const OrderMisc = () => {
               {/* Header Section */}
               <div className='flex justify-between items-start mb-8'>
                 <div>
-                  <h1 className='text-5xl font-bold text-gray-900 mb-2'>{product.name}</h1>
-                  <p className='text-gray-600'>{product.name}, {dimensions.label}</p>
+                  <h1 className='text-5xl font-bold text-gray-900 mb-2'>{getLocalizedField(product.name, language, 'Product')}</h1>
+                  <p className='text-gray-600'>{getLocalizedField(product.name, language, 'Product')}, {dimensions.label}</p>
                 </div>
                 <div className='text-right'>
                   <p className='text-5xl font-bold text-green-500'>${getAdjustedBasePrice().toFixed(2)}</p>

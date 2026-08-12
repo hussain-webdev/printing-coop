@@ -14,6 +14,7 @@ const AUTHORIZENET_PUBLIC_CLIENT_KEY = import.meta.env.VITE_AUTHORIZENET_PUBLIC_
 const AUTHORIZENET_LOGIN_ID = import.meta.env.VITE_AUTHORIZENET_LOGIN_ID
 
 const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY)
+const getEmailLanguage = () => (localStorage.getItem('i18nextLng') || 'en').toLowerCase().startsWith('fr') ? 'fr' : 'en'
 
 // Stripe card form component
 const StripeCardForm = ({ orderData, onPaymentSuccess, processing, setProcessing }) => {
@@ -93,11 +94,12 @@ const StripeCardForm = ({ orderData, onPaymentSuccess, processing, setProcessing
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            paymentIntentId: paymentIntent.id,
+paymentIntentId: paymentIntent.id,
             wholesaleSellerId: orderData.wholesaleSellerId,
             shippingCost: orderData.shippingCost,
             shippingAddress: orderData.shippingAddress,
             orderItems: orderData.orderItems,
+            lang: getEmailLanguage(),
           }),
         })
 
@@ -193,6 +195,13 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
 
   const handlePayment = (event) => {
     event.preventDefault()
+
+    // Accept.js refuses to tokenize card data from an insecure HTTP page.
+    if (!window.isSecureContext) {
+      toast.error('Authorize.net requires HTTPS. Open the deployed HTTPS site or use an HTTPS local dev server.')
+      return
+    }
+
     if (!scriptReady || !window.Accept) return toast.error('Payment system is not ready')
     setProcessing(true)
 
@@ -217,6 +226,7 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
             shippingCost: orderData.shippingCost,
             shippingAddress: orderData.shippingAddress,
             orderItems: orderData.orderItems,
+            lang: getEmailLanguage(),
           }),
         })
         const result = await paymentResponse.json()
@@ -242,6 +252,11 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
   ]
 
   return <form onSubmit={handlePayment} className='space-y-4 px-6 py-6'>
+    {!window.isSecureContext && (
+      <div className='rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900'>
+        Authorize.net requires a secure HTTPS connection before card details can be submitted.
+      </div>
+    )}
     {fields.map(([name, label, placeholder]) => (
       <label key={name} className='block text-sm font-medium text-gray-700'>
         {label}
