@@ -196,6 +196,16 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
   const handlePayment = (event) => {
     event.preventDefault()
 
+    // Accept.js expects expiration dates as MMYY. Convert the form's YYYY-MM value.
+    const expirationMatch = String(card.expirationDate).match(/^(\\d{4})-(\\d{2})$/)
+    if (!expirationMatch) {
+      setProcessing(false)
+      toast.error('Enter expiration date as YYYY-MM, for example 2029-11')
+      return
+    }
+    const [, expirationYear, expirationMonth] = expirationMatch
+    const expirationDate = `${expirationMonth}${expirationYear.slice(-2)}`
+
     // Accept.js refuses to tokenize card data from an insecure HTTP page.
     if (!window.isSecureContext) {
       toast.error('Authorize.net requires HTTPS. Open the deployed HTTPS site or use an HTTPS local dev server.')
@@ -210,7 +220,10 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
         clientKey: AUTHORIZENET_PUBLIC_CLIENT_KEY,
         apiLoginID: AUTHORIZENET_LOGIN_ID,
       },
-      cardData: card,
+      cardData: {
+        ...card,
+        expirationDate,
+      },
     }, async (response) => {
       if (response.messages?.resultCode !== 'Ok') {
         setProcessing(false)
