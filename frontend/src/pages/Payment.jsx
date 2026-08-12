@@ -196,15 +196,13 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
   const handlePayment = (event) => {
     event.preventDefault()
 
-    // Accept.js expects expiration dates as MMYY. Convert the form's YYYY-MM value.
-    const expirationMatch = String(card.expirationDate).trim().match(/^(\d{4})-(\d{2})$/)
-    if (!expirationMatch) {
+    // Authorize.net expects expirationDate in YYYY-MM format.
+    const expirationDate = String(card.expirationDate).trim()
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(expirationDate)) {
       setProcessing(false)
       toast.error('Enter expiration date as YYYY-MM, for example 2029-11')
       return
     }
-    const [, expirationYear, expirationMonth] = expirationMatch
-    const expirationDate = `${expirationMonth}${expirationYear.slice(-2)}`
 
     // Accept.js refuses to tokenize card data from an insecure HTTP page.
     if (!window.isSecureContext) {
