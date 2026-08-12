@@ -237,10 +237,10 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
       cardData: {
         cardNumber: card.cardNumber,
         cardCode: card.cardCode,
-        expirationMonth,
-        expirationYear,
-        firstName: card.firstName,
-        lastName: card.lastName,
+        // Accept.js uses month/year, not expirationMonth/expirationYear.
+        month: expirationMonth,
+        year: expirationYear,
+        fullName: `${card.firstName} ${card.lastName}`.trim(),
       },
     }
 
@@ -251,11 +251,10 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
       },
       cardData: {
         cardNumberLast4: acceptPayload.cardData.cardNumber.replace(/\D/g, '').slice(-4),
-        expirationMonth: acceptPayload.cardData.expirationMonth,
-        expirationYear: acceptPayload.cardData.expirationYear,
+        month: acceptPayload.cardData.month,
+        year: acceptPayload.cardData.year,
         cardCodeProvided: Boolean(acceptPayload.cardData.cardCode),
-        firstName: acceptPayload.cardData.firstName,
-        lastName: acceptPayload.cardData.lastName,
+        fullName: acceptPayload.cardData.fullName,
       },
     })
 
