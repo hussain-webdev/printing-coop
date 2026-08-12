@@ -197,7 +197,7 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
     event.preventDefault()
 
     // Accept.js expects expiration dates as MMYY. Convert the form's YYYY-MM value.
-    const expirationMatch = String(card.expirationDate).match(/^(\\d{4})-(\\d{2})$/)
+    const expirationMatch = String(card.expirationDate).trim().match(/^(\d{4})-(\d{2})$/)
     if (!expirationMatch) {
       setProcessing(false)
       toast.error('Enter expiration date as YYYY-MM, for example 2029-11')
