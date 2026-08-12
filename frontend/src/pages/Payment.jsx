@@ -207,6 +207,19 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
     }
     const [, expirationYear, expirationMonth] = expirationMatch
 
+    // Diagnostic logging: never log the full card number or CVV.
+    console.log('[v0] Authorize.net input format:', {
+      cardNumberLast4: String(card.cardNumber).replace(/\D/g, '').slice(-4),
+      expirationDateInput: card.expirationDate,
+      expirationYear,
+      expirationMonth,
+      cardCodeProvided: Boolean(card.cardCode),
+      acceptLoaded: Boolean(window.Accept),
+      clientKeyProvided: Boolean(AUTHORIZENET_PUBLIC_CLIENT_KEY),
+      loginIdProvided: Boolean(AUTHORIZENET_LOGIN_ID),
+      secureContext: window.isSecureContext,
+    })
+
     // Accept.js refuses to tokenize card data from an insecure HTTP page.
     if (!window.isSecureContext) {
       toast.error('Authorize.net requires HTTPS. Open the deployed HTTPS site or use an HTTPS local dev server.')
@@ -216,7 +229,7 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
     if (!scriptReady || !window.Accept) return toast.error('Payment system is not ready')
     setProcessing(true)
 
-    window.Accept.dispatchData({
+    const acceptPayload = {
       authData: {
         clientKey: AUTHORIZENET_PUBLIC_CLIENT_KEY,
         apiLoginID: AUTHORIZENET_LOGIN_ID,
@@ -229,7 +242,29 @@ const AuthorizeNetCardForm = ({ orderData, processing, setProcessing }) => {
         firstName: card.firstName,
         lastName: card.lastName,
       },
-    }, async (response) => {
+    }
+
+    console.log('[v0] Authorize.net Accept.js payload shape:', {
+      authData: {
+        clientKeyProvided: Boolean(acceptPayload.authData.clientKey),
+        apiLoginIDProvided: Boolean(acceptPayload.authData.apiLoginID),
+      },
+      cardData: {
+        cardNumberLast4: acceptPayload.cardData.cardNumber.replace(/\D/g, '').slice(-4),
+        expirationMonth: acceptPayload.cardData.expirationMonth,
+        expirationYear: acceptPayload.cardData.expirationYear,
+        cardCodeProvided: Boolean(acceptPayload.cardData.cardCode),
+        firstName: acceptPayload.cardData.firstName,
+        lastName: acceptPayload.cardData.lastName,
+      },
+    })
+
+    window.Accept.dispatchData(acceptPayload, async (response) => {
+      console.log('[v0] Authorize.net Accept.js response:', {
+        resultCode: response?.messages?.resultCode,
+        messages: response?.messages?.message,
+        opaqueDataReceived: Boolean(response?.opaqueData),
+      })
       if (response.messages?.resultCode !== 'Ok') {
         setProcessing(false)
         return toast.error(response.messages?.message?.[0]?.text || 'Card validation failed')
