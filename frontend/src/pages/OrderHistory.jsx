@@ -21,6 +21,48 @@ const getLocalizedField = (field, language, fallback) => {
   return field
 }
 
+// Static labels for the downloadable receipt PDF. The receipt always follows
+// whatever language is stored under localStorage's 'i18nextLng' key at the
+// moment it's generated, rather than the live i18n state.
+const receiptTranslations = {
+  en: {
+    receiptTitle: 'Order Receipt',
+    orderInformation: 'Order Information',
+    orderNumber: 'Order Number:',
+    orderDate: 'Order Date:',
+    orderStatus: 'Order Status:',
+    paymentStatus: 'Payment Status:',
+    paymentMethod: 'Payment Method:',
+    shippingAddress: 'Shipping Address',
+    items: 'Items',
+    product: 'Product',
+    quantity: 'Quantity',
+    price: 'Price',
+    total: 'Total',
+    subtotal: 'Subtotal:',
+    shipping: 'Shipping:',
+    totalLabel: 'Total:',
+  },
+  fr: {
+    receiptTitle: 'Reçu de commande',
+    orderInformation: 'Informations sur la commande',
+    orderNumber: 'Numéro de commande :',
+    orderDate: 'Date de commande :',
+    orderStatus: 'Statut de la commande :',
+    paymentStatus: 'Statut du paiement :',
+    paymentMethod: 'Méthode de paiement :',
+    shippingAddress: 'Adresse de livraison',
+    items: 'Articles',
+    product: 'Produit',
+    quantity: 'Quantité',
+    price: 'Prix',
+    total: 'Total',
+    subtotal: 'Sous-total :',
+    shipping: 'Livraison :',
+    totalLabel: 'Total :',
+  },
+}
+
 const OrderHistory = () => {
   const { t, i18n } = useTranslation()
   const language = i18n.language === 'fr' ? 'fr' : 'en'
@@ -314,23 +356,29 @@ const OrderHistory = () => {
   const downloadReceipt = async (order) => {
     try {
       setDownloadingReceiptId(order.id)
-      
+
+      // The receipt's language follows whatever is stored under 'i18nextLng' in
+      // localStorage at generation time (the same key react-i18next persists to).
+      const receiptLang = localStorage.getItem('i18nextLng') === 'fr' ? 'fr' : 'en'
+      const rt = receiptTranslations[receiptLang]
+      const dateLocale = receiptLang === 'fr' ? 'fr-FR' : 'en-US'
+
       // Create receipt HTML
       const receiptHTML = `
         <div style="padding: 20px; font-family: Arial, sans-serif; max-width: 800px;">
-          <h1 style="text-align: center; margin-bottom: 30px;">${t('orderHistory.viewReceipt')}</h1>
+          <h1 style="text-align: center; margin-bottom: 30px;">${rt.receiptTitle} ${order.receiptNumber}</h1>
           
           <div style="margin-bottom: 20px;">
-            <h3>Order Information</h3>
-            <p><strong>Order Number:</strong> ${order.orderNumber}</p>
-            <p><strong>Order Date:</strong> ${new Date(order.createdAt).toLocaleDateString('en-US')}</p>
-            <p><strong>Order Status:</strong> ${order.orderStatus}</p>
-            <p><strong>Payment Status:</strong> ${order.paymentStatus}</p>
-            <p><strong>Payment Method:</strong> ${order.paymentMethod}</p>
+            <h3>${rt.orderInformation}</h3>
+            <p><strong>${rt.orderNumber}</strong> ${order.orderNumber}</p>
+            <p><strong>${rt.orderDate}</strong> ${new Date(order.createdAt).toLocaleDateString(dateLocale)}</p>
+            <p><strong>${rt.orderStatus}</strong> ${order.orderStatus}</p>
+            <p><strong>${rt.paymentStatus}</strong> ${order.paymentStatus}</p>
+            <p><strong>${rt.paymentMethod}</strong> ${order.paymentMethod}</p>
           </div>
 
           <div style="margin-bottom: 20px;">
-            <h3>Shipping Address</h3>
+            <h3>${rt.shippingAddress}</h3>
             <p>${order.shippingAddress?.street || ''}</p>
             <p>${order.shippingAddress?.city || ''}, ${order.shippingAddress?.state || ''} ${order.shippingAddress?.zipcode || ''}</p>
             <p>${order.shippingAddress?.country || ''}</p>
@@ -338,20 +386,20 @@ const OrderHistory = () => {
           </div>
 
           <div style="margin-bottom: 20px;">
-            <h3>Items</h3>
+            <h3>${rt.items}</h3>
             <table style="width: 100%; border-collapse: collapse;">
               <thead>
                 <tr style="border-bottom: 2px solid #ddd;">
-                  <th style="text-align: left; padding: 8px;">Product</th>
-                  <th style="text-align: center; padding: 8px;">Quantity</th>
-                  <th style="text-align: right; padding: 8px;">Price</th>
-                  <th style="text-align: right; padding: 8px;">Total</th>
+                  <th style="text-align: left; padding: 8px;">${rt.product}</th>
+                  <th style="text-align: center; padding: 8px;">${rt.quantity}</th>
+                  <th style="text-align: right; padding: 8px;">${rt.price}</th>
+                  <th style="text-align: right; padding: 8px;">${rt.total}</th>
                 </tr>
               </thead>
               <tbody>
                 ${order.orderItems.map((item) => `
                   <tr style="border-bottom: 1px solid #eee;">
-                    <td style="padding: 8px;">${getLocalizedField(item.product?.name, language, '')}</td>
+                    <td style="padding: 8px;">${getLocalizedField(item.product?.name, receiptLang, '')}</td>
                     <td style="text-align: center; padding: 8px;">${item.quantity}</td>
                     <td style="text-align: right; padding: 8px;">$${(item.totalPrice / item.quantity).toFixed(2)}</td>
                     <td style="text-align: right; padding: 8px;">$${item.totalPrice.toFixed(2)}</td>
@@ -365,15 +413,15 @@ const OrderHistory = () => {
             <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
               <div style="width: 200px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                  <strong>Subtotal:</strong>
+                  <strong>${rt.subtotal}</strong>
                   <span>$${order.subtotal.toFixed(2)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-                  <strong>Shipping:</strong>
+                  <strong>${rt.shipping}</strong>
                   <span>$${order.shippingCost.toFixed(2)}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 18px; border-top: 1px solid #ddd; padding-top: 5px;">
-                  <strong>Total:</strong>
+                  <strong>${rt.totalLabel}</strong>
                   <span>$${order.total.toFixed(2)}</span>
                 </div>
               </div>

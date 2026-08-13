@@ -59,6 +59,13 @@ const generateOrderNumber = () => {
   return `ORD-${timestamp}-${random}`;
 };
 
+// Generate a unique receipt number for paid or manually placed orders.
+const generateReceiptNumber = () => {
+  const timestamp = Date.now();
+  const random = Math.floor(1000 + Math.random() * 9000);
+  return `RCT-${timestamp}-${random}`;
+};
+
 // Function to send order confirmation email
 const sendOrderConfirmationEmail = async (sellerEmail, sellerName, order, lang = 'en') => {
   try {
@@ -450,12 +457,14 @@ const placeOrder = async (req, res) => {
     // Calculate total with shipping
     const total = subtotal + parsedShippingCost;
     const orderNumber = generateOrderNumber();
+    const receiptNumber = generateReceiptNumber();
 
     // Create order and order items
     const order = await prisma.order.create({
       data: {
         wholesaleSellerId: parseInt(wholesaleSellerId),
         orderNumber,
+        receiptNumber,
         subtotal,
         shippingCost: parsedShippingCost,
         total,
@@ -1109,11 +1118,13 @@ const confirmStripePaymentController = async (req, res) => {
     const { subtotal, orderItemsData } = await buildOrderItemsFromDB(wholesaleSellerId, parsedOrderItems);
     const total = subtotal + parsedShippingCost;
     const orderNumber = generateOrderNumber();
+    const receiptNumber = generateReceiptNumber();
 
     const order = await prisma.order.create({
       data: {
         wholesaleSellerId: parseInt(wholesaleSellerId),
         orderNumber,
+        receiptNumber,
         subtotal,
         shippingCost: parsedShippingCost,
         total,
@@ -1190,11 +1201,13 @@ const chargeAuthorizeNetController = async (req, res) => {
 
     const { subtotal, orderItemsData } = await buildOrderItemsFromDB(sellerId, parsedItems);
     const total = subtotal + parsedShippingCost;
+    const receiptNumber = generateReceiptNumber();
     const payment = await chargeAuthorizeNet({ amount: total, opaqueData: paymentNonce });
     const order = await prisma.order.create({
       data: {
         wholesaleSellerId: sellerId,
         orderNumber: generateOrderNumber(),
+        receiptNumber,
         subtotal,
         shippingCost: parsedShippingCost,
         total,

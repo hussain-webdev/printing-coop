@@ -25,9 +25,9 @@ model WholesaleSeller {
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
-  cartItems           CartItem[]
-  orders              Order[]
-  imageZone           ImageZone?
+  cartItems CartItem[]
+  orders    Order[]
+  imageZone ImageZone?
 
   @@map("wholesale_sellers")
 }
@@ -46,94 +46,95 @@ model Admin {
 }
 
 model Product {
-  id                 Int      @id @default(autoincrement())
-  name               Json     // JSONB translation map, e.g. {"en": "apparel", "fr": "vêtements"}
-  basePrice          Float    @map("base_price")
-  category           String
-  logo               String?  // Single logo image URL from Cloudinary
-  description        Json?    // JSONB translation map
-  materials          Json?    // JSONB translation map
-  finishConfig       Json     @map("finish_config")
-  images             Json?    @default("[]") // Array of image URLs from Cloudinary
-  commonUses         Json?    @map("common_uses") // JSONB array of common uses
-  options            Json?    @map("options") // JSONB array of options
-  environment        Json?    @map("environment") // JSONB array of environment info
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id           Int      @id @default(autoincrement())
+  name         Json // JSONB translation map, e.g. {"en": "apparel", "fr": "vêtements"}
+  basePrice    Float    @map("base_price")
+  category     String
+  logo         String? // Single logo image URL from Cloudinary
+  description  Json? // JSONB translation map
+  materials    Json? // JSONB translation map
+  finishConfig Json     @map("finish_config")
+  images       Json?    @default("[]") // Array of image URLs from Cloudinary
+  commonUses   Json?    @map("common_uses") // JSONB array of common uses
+  options      Json?    @map("options") // JSONB array of options
+  environment  Json?    @map("environment") // JSONB array of environment info
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  cartItems          CartItem[]
-  orderItems         OrderItem[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
 
   @@map("products")
 }
 
 model CartItem {
-  id                    Int      @id @default(autoincrement())
-  wholesaleSellerId     Int      @map("wholesale_seller_id")
-  productId             Int      @map("product_id")
-  quantity              Int
-  width                 Float?
-  height                Float?
-  size                  Json?
-  selectedFinishConfig  Json?    @map("selected_finish_config")
-  images                Json?    @default("[]") // Array of image URLs and S3 keys from cart uploads
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  id                   Int      @id @default(autoincrement())
+  wholesaleSellerId    Int      @map("wholesale_seller_id")
+  productId            Int      @map("product_id")
+  quantity             Int
+  width                Float?
+  height               Float?
+  size                 Json?
+  selectedFinishConfig Json?    @map("selected_finish_config")
+  images               Json?    @default("[]") // Array of image URLs and S3 keys from cart uploads
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
-  wholesaleSeller       WholesaleSeller @relation(fields: [wholesaleSellerId], references: [id], onDelete: Cascade)
-  product               Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  wholesaleSeller WholesaleSeller @relation(fields: [wholesaleSellerId], references: [id], onDelete: Cascade)
+  product         Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([wholesaleSellerId, productId])
   @@map("cart_items")
 }
 
 model Order {
-  id                 Int      @id @default(autoincrement())
-  wholesaleSellerId  Int      @map("wholesale_seller_id")
-  orderNumber        String   @unique @map("order_number")
-  subtotal           Float
-  shippingCost       Float    @map("shipping_cost")
-  total              Float
-  paymentMethod      String   @map("payment_method")
-  paymentStatus      String   @map("payment_status")
-  orderStatus        String   @map("order_status")
-  shippingAddress    Json     @map("shipping_address")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id                Int      @id @default(autoincrement())
+  wholesaleSellerId Int      @map("wholesale_seller_id")
+  orderNumber       String   @unique @map("order_number")
+  receiptNumber     String   @unique @map("receipt_number")
+  subtotal          Float
+  shippingCost      Float    @map("shipping_cost")
+  total             Float
+  paymentMethod     String   @map("payment_method")
+  paymentStatus     String   @map("payment_status")
+  orderStatus       String   @map("order_status")
+  shippingAddress   Json     @map("shipping_address")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  wholesaleSeller    WholesaleSeller @relation(fields: [wholesaleSellerId], references: [id], onDelete: Cascade)
-  orderItems         OrderItem[]
+  wholesaleSeller WholesaleSeller @relation(fields: [wholesaleSellerId], references: [id], onDelete: Cascade)
+  orderItems      OrderItem[]
 
   @@map("orders")
 }
 
 model OrderItem {
-  id                    Int      @id @default(autoincrement())
-  orderId               Int      @map("order_id")
-  productId             Int      @map("product_id")
-  quantity              Int
-  totalPrice            Float    @map("total_price")
-  width                 Float
-  height                Float
-  size                  Json
-  selectedFinishConfig  Json     @map("selected_finish_config")
-  images                Json?    @default("[]") // Array of image URLs and S3 keys copied from CartItem
-  createdAt             DateTime @default(now()) @map("created_at")
+  id                   Int      @id @default(autoincrement())
+  orderId              Int      @map("order_id")
+  productId            Int      @map("product_id")
+  quantity             Int
+  totalPrice           Float    @map("total_price")
+  width                Float
+  height               Float
+  size                 Json
+  selectedFinishConfig Json     @map("selected_finish_config")
+  images               Json?    @default("[]") // Array of image URLs and S3 keys copied from CartItem
+  createdAt            DateTime @default(now()) @map("created_at")
 
-  order                 Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product               Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("order_items")
 }
 
 model ImageZone {
-  id                   Int       @id @default(autoincrement())
-  wholesaleSellerId    Int       @map("wholesale_seller_id")
-  images               Json      @default("{\"Home\": []}") // Folder structure with images
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  id                Int      @id @default(autoincrement())
+  wholesaleSellerId Int      @map("wholesale_seller_id")
+  images            Json     @default("{\"Home\": []}") // Folder structure with images
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  wholesaleSeller      WholesaleSeller @relation(fields: [wholesaleSellerId], references: [id], onDelete: Cascade)
+  wholesaleSeller WholesaleSeller @relation(fields: [wholesaleSellerId], references: [id], onDelete: Cascade)
 
   @@unique([wholesaleSellerId])
   @@map("image_zone")
