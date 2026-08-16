@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Loader, Plus, Minus } from 'lucide-react'
+import { Loader, Plus, Minus, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import Draggable from 'react-draggable'
 import { useTranslation } from 'react-i18next'
@@ -40,7 +40,7 @@ const OrderApparel = () => {
   // Quantity state
   const [quantity, setQuantity] = useState(1)
 
-  // Which popup is currently open: null | 'sizes' | 'color'
+  // Which popup is currently open: null | 'sizes' | 'color' | 'quantity'
   const [openPopup, setOpenPopup] = useState(null)
 
   // Loading add to cart
@@ -242,33 +242,47 @@ const OrderApparel = () => {
           <div className='relative px-6 py-8'>
             <div className='max-w-7xl mx-auto'>
               {/* Header Section */}
-              <div className='flex justify-between items-start mb-8'>
+              <div className='flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4'>
                 <div>
-                  <h1 className='text-5xl font-bold text-gray-900 mb-2'>{getLocalizedField(product.name, language, 'Product')}</h1>
-                  <p className='text-gray-600'>{getLocalizedField(product.name, language, 'Product')} Apparel</p>
+                  <h1 className='text-3xl font-bold text-gray-900 mb-1'>{getLocalizedField(product.name, language, 'Product')}</h1>
+                  <p className='text-gray-600 text-sm'>{getLocalizedField(product.name, language, 'Product')} Apparel</p>
                 </div>
-                <div className='text-right'>
-                  <p className='text-5xl font-bold text-green-500'>${product.basePrice.toFixed(2)}</p>
-                  <p className='text-gray-600 text-sm'>Custom Design</p>
+
+                <div className='flex items-center gap-4'>
+                  {/* Price */}
+                  <div className='text-right'>
+                    <p className='text-3xl font-bold text-green-500 leading-tight'>${product.basePrice.toFixed(2)}</p>
+                    <p className='text-gray-500 text-xs'>Custom Design</p>
+                  </div>
+
+                  {/* Add to Cart - sits beside the price */}
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={addingToCart}
+                    className='flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg transition disabled:opacity-50 whitespace-nowrap'
+                  >
+                    {addingToCart ? 'Adding...' : 'Add to Cart'}
+                    {!addingToCart && <ChevronRight size={16} />}
+                  </button>
                 </div>
               </div>
 
               {/* Main Content - single centered column */}
-              <div className='max-w-4xl mx-auto'>
+              <div className='max-w-md bg-white p-2 mx-auto'>
                 {/* T-Shirt Image with Upload Overlay */}
-                <div className='relative bg-white rounded-lg p-8 flex flex-col items-center'>
+                <div className='relative flex flex-col items-center'>
                   {/* Tabs */}
-                  <div className='flex justify-center gap-3 mb-4'>
-                    <button className='px-6 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 font-medium shadow-sm'>
+                  <div className='flex justify-center gap-3 mb-3'>
+                    <button className='px-5 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm font-medium shadow-sm'>
                       Front
                     </button>
-                    <button className='px-6 py-2 bg-gray-100 text-gray-400 rounded-lg font-medium'>
+                    <button className='px-5 py-1.5 bg-gray-100 text-gray-400 rounded-lg text-sm font-medium'>
                       Back
                     </button>
                   </div>
 
                   {/* T-Shirt Image */}
-                  <div className='relative h-96 flex items-center justify-center'>
+                  <div className='relative h-64 flex items-center justify-center'>
                     <img
                       src='/shirt_front_white.png'
                       alt='T-Shirt'
@@ -280,17 +294,17 @@ const OrderApparel = () => {
                       {!imagePreview ? (
                         <div
                           onClick={() => setShowImageUploadModal(true)}
-                          className='border-2 border-dashed border-gray-400 rounded-lg bg-gray-100/80 cursor-pointer hover:bg-gray-200/80 transition flex flex-col items-center justify-center gap-2 w-36 h-36'
+                          className='border-2 border-dashed border-gray-400 rounded-lg bg-gray-100/80 cursor-pointer hover:bg-gray-200/80 transition flex flex-col items-center justify-center gap-1 w-24 h-24'
                         >
-                          <span className='w-6 h-6 rounded-full border-2 border-gray-500 flex items-center justify-center mb-1'>
-                            <Plus size={12} className='text-gray-500' />
+                          <span className='w-5 h-5 rounded-full border-2 border-gray-500 flex items-center justify-center mb-1'>
+                            <Plus size={10} className='text-gray-500' />
                           </span>
-                          <p className='text-center text-gray-500 font-bold text-sm tracking-wide'>CLICK HERE</p>
-                          <p className='text-center text-gray-500 font-bold text-sm tracking-wide'>TO SELECT</p>
-                          <p className='text-center text-gray-500 font-bold text-sm tracking-wide'>FRONT IMAGE</p>
+                          <p className='text-center text-gray-500 font-bold text-[10px] tracking-wide leading-tight'>CLICK HERE</p>
+                          <p className='text-center text-gray-500 font-bold text-[10px] tracking-wide leading-tight'>TO SELECT</p>
+                          <p className='text-center text-gray-500 font-bold text-[10px] tracking-wide leading-tight'>FRONT IMAGE</p>
                         </div>
                       ) : (
-                        <div className='relative border-2 border-dashed border-gray-400 rounded-lg bg-white/40 overflow-hidden w-36 h-36'>
+                        <div className='relative border-2 border-dashed border-gray-400 rounded-lg bg-white/40 overflow-hidden w-24 h-24'>
                           <Draggable
                             nodeRef={imageRef}
                             bounds='parent'
@@ -316,132 +330,140 @@ const OrderApparel = () => {
                     Preview based on {selectedSizes[0] || availableSizes[0] || 'Large'} size T-Shirt
                   </p>
                 </div>
+              </div>
 
-                {/* Sizes / Color / Images Boxes Row */}
-                <div className='relative flex gap-4 mt-4'>
-                  {/* Images - click to open the image library and select/change the artwork */}
+              {/* Sizes / Color / Images Boxes Row - full width, wraps across the screen */}
+              <div className='relative justify-center flex flex-wrap gap-3 mt-5'>
+                {/* Images - click to open the image library and select/change the artwork */}
+                <button
+                  type='button'
+                  onClick={() => setShowImageUploadModal(true)}
+                  className='flex-none w-[220px] flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
+                >
+                  <span className='text-gray-600 font-medium text-sm tracking-wide'>IMAGES</span>
+                  <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm'>{imagePreview ? '1' : '0'}</span>
+                </button>
+
+                {/* Quantity - click to open the stepper popup */}
+                <div className='relative flex-none w-[220px]'>
                   <button
                     type='button'
-                    onClick={() => setShowImageUploadModal(true)}
-                    className='flex-1 flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
+                    onClick={() => setOpenPopup(openPopup === 'quantity' ? null : 'quantity')}
+                    className='w-full flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
                   >
-                    <span className='text-gray-600 font-medium text-sm tracking-wide'>IMAGES</span>
-                    <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm'>{imagePreview ? '1' : '0'}</span>
+                    <span className='text-gray-600 font-medium text-sm tracking-wide'>QUANTITY</span>
+                    <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm'>{quantity}</span>
                   </button>
 
-                  {/* Sizes - click to open the size selection popup */}
-                  <div className='relative flex-1'>
-                    <button
-                      type='button'
-                      onClick={() => setOpenPopup(openPopup === 'sizes' ? null : 'sizes')}
-                      className='w-full flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
-                    >
-                      <span className='text-gray-600 font-medium text-sm tracking-wide'>SIZES</span>
-                      <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm truncate max-w-[10rem]'>
-                        {selectedSizes.length > 0 ? selectedSizes.join(', ') : 'Select'}
-                      </span>
-                    </button>
-
-                    {/* Size selection popup */}
-                    {openPopup === 'sizes' && (
-                      <div className='absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
-                        <div className='px-4 py-2 border-b border-gray-200 text-center'>
-                          <span className='text-sm text-gray-700'>Select Sizes</span>
-                        </div>
-                        <div className='p-3 space-y-2'>
-                          {availableSizes.map((size) => (
-                            <button
-                              key={size}
-                              onClick={() => toggleSize(size)}
-                              className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition ${
-                                selectedSizes.includes(size)
-                                  ? 'bg-yellow-400 text-gray-900'
-                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
-                            >
-                              {size}
-                            </button>
-                          ))}
+                  {/* Quantity popup */}
+                  {openPopup === 'quantity' && (
+                    <div className='absolute bottom-full left-0 mb-2 w-56 bg-white border-2 border-gray-300 shadow-lg z-10'>
+                      <div className='px-4 py-2 border-b border-gray-200 text-center'>
+                        <span className='text-sm text-gray-700'>Quantity</span>
+                      </div>
+                      <div className='px-4 py-3 flex justify-center'>
+                        <div className='flex items-center gap-2 border border-gray-300 rounded-lg'>
+                          <button
+                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                            className='p-2 hover:bg-gray-100 transition'
+                          >
+                            <Minus size={16} />
+                          </button>
+                          <input
+                            type='number'
+                            value={quantity}
+                            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                            className='w-14 px-2 py-2 text-center border-none focus:outline-none'
+                          />
+                          <button
+                            onClick={() => setQuantity(quantity + 1)}
+                            className='p-2 hover:bg-gray-100 transition'
+                          >
+                            <Plus size={16} />
+                          </button>
                         </div>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Color - click to open the color selection popup */}
-                  {availableColors.length > 0 && (
-                    <div className='relative flex-1'>
-                      <button
-                        type='button'
-                        onClick={() => setOpenPopup(openPopup === 'color' ? null : 'color')}
-                        className='w-full flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
-                      >
-                        <span className='text-gray-600 font-medium text-sm tracking-wide'>COLOR</span>
-                        <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm truncate max-w-[10rem]'>
-                          {selectedColor || 'Select'}
-                        </span>
-                      </button>
-
-                      {/* Color selection popup */}
-                      {openPopup === 'color' && (
-                        <div className='absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
-                          <div className='px-4 py-2 border-b border-gray-200 text-center'>
-                            <span className='text-sm text-gray-700'>Select Color</span>
-                          </div>
-                          <div className='p-3'>
-                            <select
-                              value={selectedColor}
-                              onChange={(e) => setSelectedColor(e.target.value)}
-                              className='w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
-                            >
-                              <option value=''>Select a color</option>
-                              {availableColors.map((color) => (
-                                <option key={color} value={color}>
-                                  {color}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
 
-                {/* Quantity and Add to Cart */}
-                <div className='bg-white rounded-lg p-6 border border-gray-200 space-y-4 mt-6'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>Quantity</label>
-                    <div className='flex items-center gap-2 border border-gray-300 rounded-lg w-40'>
-                      <button
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className='p-2 hover:bg-gray-100 transition'
-                      >
-                        <Minus size={18} />
-                      </button>
-                      <input
-                        type='number'
-                        value={quantity}
-                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                        className='flex-1 px-3 py-2 text-center border-none focus:outline-none'
-                      />
-                      <button
-                        onClick={() => setQuantity(quantity + 1)}
-                        className='p-2 hover:bg-gray-100 transition'
-                      >
-                        <Plus size={18} />
-                      </button>
-                    </div>
-                  </div>
-
+                {/* Sizes - click to open the size selection popup */}
+                <div className='relative flex-none w-[220px]'>
                   <button
-                    onClick={handleAddToCart}
-                    disabled={addingToCart}
-                    className='w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-3 px-6 rounded-lg transition disabled:opacity-50'
+                    type='button'
+                    onClick={() => setOpenPopup(openPopup === 'sizes' ? null : 'sizes')}
+                    className='w-full flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
                   >
-                    {addingToCart ? 'Adding to cart...' : 'Add to Cart'}
+                    <span className='text-gray-600 font-medium text-sm tracking-wide'>SIZES</span>
+                    <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm truncate max-w-[10rem]'>
+                      {selectedSizes.length > 0 ? selectedSizes.join(', ') : 'Select'}
+                    </span>
                   </button>
+
+                  {/* Size selection popup */}
+                  {openPopup === 'sizes' && (
+                    <div className='absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
+                      <div className='px-4 py-2 border-b border-gray-200 text-center'>
+                        <span className='text-sm text-gray-700'>Select Sizes</span>
+                      </div>
+                      <div className='p-3 space-y-2'>
+                        {availableSizes.map((size) => (
+                          <button
+                            key={size}
+                            onClick={() => toggleSize(size)}
+                            className={`w-full px-4 py-2 rounded-lg font-medium text-sm transition ${
+                              selectedSizes.includes(size)
+                                ? 'bg-yellow-400 text-gray-900'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {/* Color - click to open the color selection popup */}
+                {availableColors.length > 0 && (
+                  <div className='relative flex-none w-[220px]'>
+                    <button
+                      type='button'
+                      onClick={() => setOpenPopup(openPopup === 'color' ? null : 'color')}
+                      className='w-full flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
+                    >
+                      <span className='text-gray-600 font-medium text-sm tracking-wide'>COLOR</span>
+                      <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm truncate max-w-[10rem]'>
+                        {selectedColor || 'Select'}
+                      </span>
+                    </button>
+
+                    {/* Color selection popup */}
+                    {openPopup === 'color' && (
+                      <div className='absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
+                        <div className='px-4 py-2 border-b border-gray-200 text-center'>
+                          <span className='text-sm text-gray-700'>Select Color</span>
+                        </div>
+                        <div className='p-3'>
+                          <select
+                            value={selectedColor}
+                            onChange={(e) => setSelectedColor(e.target.value)}
+                            className='w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
+                          >
+                            {availableColors.map((color) => (
+                              <option key={color} value={color}>
+                                {color}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+
             </div>
           </div>
         </div>

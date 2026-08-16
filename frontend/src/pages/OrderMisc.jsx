@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Loader, Plus, Minus } from 'lucide-react'
+import { Loader, Plus, Minus, ChevronRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useTranslation } from 'react-i18next'
 import DashboardNavbar from '../components/DashboardNavbar'
@@ -49,7 +49,7 @@ const OrderMisc = () => {
   // Quantity state
   const [quantity, setQuantity] = useState(1)
 
-  // Which popup is currently open: null | <finishConfig key>
+  // Which popup is currently open: null | 'size' | 'quantity' | <finishConfig key>
   const [openPopup, setOpenPopup] = useState(null)
   
   // Loading add to cart
@@ -129,7 +129,7 @@ const OrderMisc = () => {
 
   // Scales the actual dimensions down into a bounded preview box,
   // preserving aspect ratio, so the preview matches real proportions.
-  const MAX_PREVIEW_SIZE = 280
+  const MAX_PREVIEW_SIZE = 200
   const getPreviewBoxDimensions = () => {
     const w = parseFloat(width)
     const h = parseFloat(height)
@@ -274,23 +274,37 @@ const OrderMisc = () => {
           <div className='relative px-6 py-8'>
             <div className='max-w-7xl mx-auto'>
               {/* Header Section */}
-              <div className='flex justify-between items-start mb-8'>
+              <div className='flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4'>
                 <div>
-                  <h1 className='text-5xl font-bold text-gray-900 mb-2'>{getLocalizedField(product.name, language, 'Product')}</h1>
-                  <p className='text-gray-600'>{getLocalizedField(product.name, language, 'Product')}, {dimensions.label}</p>
+                  <h1 className='text-3xl font-bold text-gray-900 mb-1'>{getLocalizedField(product.name, language, 'Product')}</h1>
+                  <p className='text-gray-600 text-sm'>{getLocalizedField(product.name, language, 'Product')}, {dimensions.label}</p>
                 </div>
-                <div className='text-right'>
-                  <p className='text-5xl font-bold text-green-500'>${getAdjustedBasePrice().toFixed(2)}</p>
-                  <p className='text-gray-600 text-sm'>Premium Quality Product</p>
+
+                <div className='flex items-center gap-4'>
+                  {/* Price */}
+                  <div className='text-right'>
+                    <p className='text-3xl font-bold text-green-500 leading-tight'>${getAdjustedBasePrice().toFixed(2)}</p>
+                    <p className='text-gray-500 text-xs'>Premium Quality Product</p>
+                  </div>
+
+                  {/* Add to Cart - sits beside the price */}
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={addingToCart}
+                    className='flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg transition disabled:opacity-50 whitespace-nowrap'
+                  >
+                    {addingToCart ? 'Adding...' : 'Add to Cart'}
+                    {!addingToCart && <ChevronRight size={16} />}
+                  </button>
                 </div>
               </div>
 
               {/* Main Content - single centered column */}
-              <div className='max-w-4xl mx-auto'>
+              <div className='max-w-md mx-auto'>
                 {/* Safe Zone / Dimension Display */}
-                <div className='p-8 flex flex-col items-center'>
+                <div className='flex flex-col items-center'>
                   {/* Title */}
-                  <h3 className='text-center text-gray-900 font-semibold text-sm tracking-wide mb-4'>▼ TOP OF IMAGE ▼</h3>
+                  <h3 className='text-center text-gray-900 font-semibold text-sm tracking-wide mb-3'>▼ TOP OF IMAGE ▼</h3>
 
                   {/* Top width measurement */}
                   <div className='flex items-center gap-2' style={{ width: `${getPreviewBoxDimensions().width}px` }}>
@@ -302,7 +316,7 @@ const OrderMisc = () => {
                   </div>
 
                   {/* Middle row: left height gauge, box, right height gauge */}
-                  <div className='flex items-center gap-6 my-2'>
+                  <div className='flex items-center gap-4 my-2'>
                     {/* Left height measurement */}
                     <div
                       className='flex flex-col items-center gap-1'
@@ -321,8 +335,8 @@ const OrderMisc = () => {
                     </div>
 
                     {/* Safe Zone Warning */}
-                    <div className='border-2 border-red-600 border-dashed p-4 bg-red-50 shrink-0'>
-                      <p className='text-red-600 font-semibold text-center text-sm'>
+                    <div className='border-2 border-red-600 border-dashed p-3 bg-red-50 shrink-0'>
+                      <p className='text-red-600 font-semibold text-center text-xs'>
                         Make sure important
                         <br />
                         text and images are
@@ -376,7 +390,7 @@ const OrderMisc = () => {
                   </div>
 
                   {/* Bottom width measurement */}
-                  <div className='flex items-center gap-2 mb-4' style={{ width: `${getPreviewBoxDimensions().width}px` }}>
+                  <div className='flex items-center gap-2 mb-3' style={{ width: `${getPreviewBoxDimensions().width}px` }}>
                     <span className='text-gray-400 text-xs'>&larr;</span>
                     <div className='flex-1 h-px bg-gray-400' />
                     <span className='text-gray-500 text-xs px-1 whitespace-nowrap'>{dimensions.width}&quot;</span>
@@ -389,11 +403,11 @@ const OrderMisc = () => {
 
                   {/* Image fit: Center / Fit segmented toggle */}
                   {imagePreview && (
-                    <div className='inline-flex rounded-lg overflow-hidden border-2 border-green-600'>
+                    <div className='inline-flex rounded-lg overflow-hidden border-2 border-green-600 scale-90'>
                       <button
                         type='button'
                         onClick={() => handleImageFitChange('center')}
-                        className={`px-6 py-2 text-sm font-bold uppercase tracking-wide transition ${
+                        className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
                           imageFit === 'center' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 hover:bg-green-100'
                         }`}
                       >
@@ -402,7 +416,7 @@ const OrderMisc = () => {
                       <button
                         type='button'
                         onClick={() => handleImageFitChange('fit')}
-                        className={`px-6 py-2 text-sm font-bold uppercase tracking-wide transition ${
+                        className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wide transition ${
                           imageFit === 'fit' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-700 hover:bg-green-100'
                         }`}
                       >
@@ -411,189 +425,198 @@ const OrderMisc = () => {
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* Info / Size / Orientation / Config Boxes Row */}
-                <div className='relative flex gap-4 mt-4 flex-wrap'>
-                  {/* Images - click to open the image library and select/change the artwork */}
+              {/* Info / Size / Orientation / Config Boxes Row - full width, wraps across the screen */}
+              <div className='relative justify-center flex flex-wrap gap-3 mt-5'>
+                {/* Images - click to open the image library and select/change the artwork */}
+                <button
+                  type='button'
+                  onClick={() => setShowImageUploadModal(true)}
+                  className='flex-none w-[220px] flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
+                >
+                  <span className='text-gray-600 font-medium text-sm tracking-wide'>IMAGES</span>
+                  <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm'>{imagePreview ? '1' : '0'}</span>
+                </button>
+
+                {/* Quantity - click to open the stepper popup */}
+                <div className='relative flex-none w-[220px]'>
                   <button
                     type='button'
-                    onClick={() => setShowImageUploadModal(true)}
-                    className='flex-1 min-w-[140px] flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
+                    onClick={() => setOpenPopup(openPopup === 'quantity' ? null : 'quantity')}
+                    className='w-full flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
                   >
-                    <span className='text-gray-600 font-medium text-sm tracking-wide'>IMAGES</span>
-                    <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm'>{imagePreview ? '1' : '0'}</span>
+                    <span className='text-gray-600 font-medium text-sm tracking-wide'>QUANTITY</span>
+                    <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm'>{quantity}</span>
                   </button>
 
-                  {/* Size - click to open editable width/height inputs */}
-                  <div className='relative flex-1 min-w-[140px]'>
-                    <button
-                      type='button'
-                      onClick={() => setOpenPopup(openPopup === 'size' ? null : 'size')}
-                      className='w-full flex items-center justify-between border border-green-600 rounded-lg px-4 py-3 bg-white hover:bg-green-50 transition'
-                    >
-                      <span className='text-green-600 font-medium text-sm tracking-wide'>SIZE</span>
-                      <span className='px-3 py-1 bg-green-600 text-white rounded font-bold text-sm'>{dimensions.label}</span>
-                    </button>
-
-                    {/* Editable size popup */}
-                    {openPopup === 'size' && (
-                      <div className='absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
-                        <div className='px-4 py-2 border-b border-gray-200 text-center'>
-                          <span className='text-sm text-gray-700'>Size (inches)</span>
-                        </div>
-                        <div className='px-4 py-3 space-y-3'>
-                          <div className='flex items-center gap-2'>
-                            <label className='text-sm text-gray-600 w-14'>width:</label>
-                            <input
-                              type='number'
-                              min='0'
-                              step='0.1'
-                              value={width}
-                              onChange={(e) => setWidth(e.target.value)}
-                              className='flex-1 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
-                            />
-                            <span className='text-xs text-gray-500'>in</span>
-                          </div>
-                          <div className='flex items-center gap-2'>
-                            <label className='text-sm text-gray-600 w-14'>height:</label>
-                            <input
-                              type='number'
-                              min='0'
-                              step='0.1'
-                              value={height}
-                              onChange={(e) => setHeight(e.target.value)}
-                              className='flex-1 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
-                            />
-                            <span className='text-xs text-gray-500'>in</span>
-                          </div>
-                        </div>
+                  {/* Quantity popup */}
+                  {openPopup === 'quantity' && (
+                    <div className='absolute bottom-full left-0 mb-2 w-56 bg-white border-2 border-gray-300 shadow-lg z-10'>
+                      <div className='px-4 py-2 border-b border-gray-200 text-center'>
+                        <span className='text-sm text-gray-700'>Quantity</span>
                       </div>
-                    )}
-                  </div>
-
-                  {/* Landscape / Portrait toggle */}
-                  <div className='flex-1 min-w-[200px] flex items-stretch border border-green-600 rounded-lg overflow-hidden bg-white'>
-                    <button
-                      type='button'
-                      onClick={() => handleOrientationChange('landscape')}
-                      className={`flex-1 px-4 py-3 font-bold text-sm tracking-wide transition-colors ${
-                        orientation === 'landscape' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-600'
-                      }`}
-                    >
-                      LANDSCAPE
-                    </button>
-                    <button
-                      type='button'
-                      onClick={() => handleOrientationChange('portrait')}
-                      className={`flex-1 px-4 py-3 font-bold text-sm tracking-wide transition-colors ${
-                        orientation === 'portrait' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-600'
-                      }`}
-                    >
-                      PORTRAIT
-                    </button>
-                  </div>
-
-                  {/* Finish Config boxes */}
-                  {product.finishConfig && Object.entries(product.finishConfig).map(([key, value]) => {
-                    const label = key.replace(/([A-Z])/g, ' $1').trim().toUpperCase()
-                    const isBoolean = typeof value === 'boolean'
-                    const currentValue = selectedConfig[key] !== undefined ? selectedConfig[key] : value
-
-                    if (isBoolean) {
-                      return (
-                        <div
-                          key={key}
-                          className='flex-1 min-w-[160px] flex items-center justify-between border border-green-600 rounded-lg px-4 py-3 bg-white'
-                        >
-                          <span className='text-green-600 font-medium text-sm tracking-wide'>{label}</span>
+                      <div className='px-4 py-3 flex justify-center'>
+                        <div className='flex items-center gap-2 border border-gray-300 rounded-lg'>
                           <button
-                            type='button'
-                            onClick={() => setSelectedConfig({ ...selectedConfig, [key]: !currentValue })}
-                            aria-label={`Toggle ${label}`}
-                            className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${
-                              currentValue ? 'bg-green-600' : 'bg-gray-300'
-                            }`}
+                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                            className='p-2 hover:bg-gray-100 transition'
                           >
-                            <span
-                              className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
-                                currentValue ? 'translate-x-5' : 'translate-x-0'
-                              }`}
-                            />
+                            <Minus size={16} />
+                          </button>
+                          <input
+                            type='number'
+                            value={quantity}
+                            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                            className='w-14 px-2 py-2 text-center border-none focus:outline-none'
+                          />
+                          <button
+                            onClick={() => setQuantity(quantity + 1)}
+                            className='p-2 hover:bg-gray-100 transition'
+                          >
+                            <Plus size={16} />
                           </button>
                         </div>
-                      )
-                    }
-
-                    return (
-                      <div key={key} className='relative flex-1 min-w-[160px]'>
-                        <button
-                          type='button'
-                          onClick={() => setOpenPopup(openPopup === key ? null : key)}
-                          className='w-full flex items-center justify-between border border-green-600 rounded-lg px-4 py-3 bg-white hover:bg-green-50 transition'
-                        >
-                          <span className='text-green-600 font-medium text-sm tracking-wide'>{label}</span>
-                          <span className='px-3 py-1 bg-green-600 text-white rounded font-bold text-sm truncate max-w-[8rem]'>
-                            {String(currentValue)}
-                          </span>
-                        </button>
-
-                        {/* Edit value popup */}
-                        {openPopup === key && (
-                          <div className='absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
-                            <div className='px-4 py-2 border-b border-gray-200 text-center'>
-                              <span className='text-sm text-gray-700 capitalize'>{label}</span>
-                            </div>
-                            <div className='px-4 py-3'>
-                              <input
-                                type='text'
-                                value={currentValue}
-                                onChange={(e) => setSelectedConfig({ ...selectedConfig, [key]: e.target.value })}
-                                className='w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
-                                autoFocus
-                              />
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    )
-                  })}
+                    </div>
+                  )}
                 </div>
 
-                {/* Quantity and Add to Cart */}
-                <div className='bg-white rounded-lg p-6 border border-gray-200 space-y-4 mt-6'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>Quantity</label>
-                    <div className='flex items-center gap-2 border border-gray-300 rounded-lg w-40'>
-                      <button
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className='p-2 hover:bg-gray-100 transition'
-                      >
-                        <Minus size={18} />
-                      </button>
-                      <input
-                        type='number'
-                        value={quantity}
-                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                        className='flex-1 px-3 py-2 text-center border-none focus:outline-none'
-                      />
-                      <button
-                        onClick={() => setQuantity(quantity + 1)}
-                        className='p-2 hover:bg-gray-100 transition'
-                      >
-                        <Plus size={18} />
-                      </button>
-                    </div>
-                  </div>
-
+                {/* Size - click to open editable width/height inputs */}
+                <div className='relative flex-none w-[220px]'>
                   <button
-                    onClick={handleAddToCart}
-                    disabled={addingToCart}
-                    className='w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-3 px-6 rounded-lg transition disabled:opacity-50'
+                    type='button'
+                    onClick={() => setOpenPopup(openPopup === 'size' ? null : 'size')}
+                    className='w-full flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
                   >
-                    {addingToCart ? 'Adding to cart...' : 'Add to Cart'}
+                    <span className='text-gray-600 font-medium text-sm tracking-wide'>SIZE</span>
+                    <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm'>{dimensions.label}</span>
+                  </button>
+
+                  {/* Editable size popup */}
+                  {openPopup === 'size' && (
+                    <div className='absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
+                      <div className='px-4 py-2 border-b border-gray-200 text-center'>
+                        <span className='text-sm text-gray-700'>Size (inches)</span>
+                      </div>
+                      <div className='px-4 py-3 space-y-3'>
+                        <div className='flex items-center gap-2'>
+                          <label className='text-sm text-gray-600 w-14'>width:</label>
+                          <input
+                            type='number'
+                            min='0'
+                            step='0.1'
+                            value={width}
+                            onChange={(e) => setWidth(e.target.value)}
+                            className='flex-1 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
+                          />
+                          <span className='text-xs text-gray-500'>in</span>
+                        </div>
+                        <div className='flex items-center gap-2'>
+                          <label className='text-sm text-gray-600 w-14'>height:</label>
+                          <input
+                            type='number'
+                            min='0'
+                            step='0.1'
+                            value={height}
+                            onChange={(e) => setHeight(e.target.value)}
+                            className='flex-1 px-2 py-1 border border-gray-300 rounded text-center text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
+                          />
+                          <span className='text-xs text-gray-500'>in</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Landscape / Portrait toggle */}
+                <div className='flex-none w-[220px] flex items-stretch border-2 border-gray-400 overflow-hidden bg-white'>
+                  <button
+                    type='button'
+                    onClick={() => handleOrientationChange('landscape')}
+                    className={`flex-1 px-3 py-3 font-bold text-xs tracking-wide transition-colors ${
+                      orientation === 'landscape' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    LANDSCAPE
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => handleOrientationChange('portrait')}
+                    className={`flex-1 px-3 py-3 font-bold text-xs tracking-wide transition-colors ${
+                      orientation === 'portrait' ? 'bg-green-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    PORTRAIT
                   </button>
                 </div>
+
+                {/* Finish Config boxes */}
+                {product.finishConfig && Object.entries(product.finishConfig).map(([key, value]) => {
+                  const label = key.replace(/([A-Z])/g, ' $1').trim().toUpperCase()
+                  const isBoolean = typeof value === 'boolean'
+                  const currentValue = selectedConfig[key] !== undefined ? selectedConfig[key] : value
+
+                  if (isBoolean) {
+                    return (
+                      <div
+                        key={key}
+                        className='relative flex-none w-[220px] flex items-center justify-between border-2 border-gray-200 px-4 py-3 bg-gray-50'
+                      >
+                        <span className='text-gray-400 font-medium text-sm tracking-wide'>{label}</span>
+                        <button
+                          type='button'
+                          onClick={() => setSelectedConfig({ ...selectedConfig, [key]: !currentValue })}
+                          aria-label={`Toggle ${label}`}
+                          className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${
+                            currentValue ? 'bg-gray-700' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+                              currentValue ? 'translate-x-5' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div key={key} className='relative flex-none w-[220px]'>
+                      <button
+                        type='button'
+                        onClick={() => setOpenPopup(openPopup === key ? null : key)}
+                        className='w-full flex items-center justify-between border-2 border-gray-200 px-4 py-3 bg-gray-50 hover:bg-gray-100 transition'
+                      >
+                        <span className='text-gray-400 font-medium text-sm tracking-wide'>{label}</span>
+                        <span className='px-3 py-1 bg-gray-200 text-gray-500 rounded font-bold text-sm uppercase truncate max-w-[8rem]'>
+                          {String(currentValue)}
+                        </span>
+                      </button>
+
+                      {/* Edit value popup */}
+                      {openPopup === key && (
+                        <div className='absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
+                          <div className='px-4 py-2 border-b border-gray-200 text-center'>
+                            <span className='text-sm text-gray-700 capitalize'>{label}</span>
+                          </div>
+                          <div className='px-4 py-3'>
+                            <input
+                              type='text'
+                              value={currentValue}
+                              onChange={(e) => setSelectedConfig({ ...selectedConfig, [key]: e.target.value })}
+                              className='w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400'
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
+
             </div>
           </div>
         </div>

@@ -41,7 +41,7 @@ const OrderRigid = () => {
   // Quantity state
   const [quantity, setQuantity] = useState(1)
 
-  // Which popup is currently open: null | 'size' | <finishConfig key>
+  // Which popup is currently open: null | 'size' | 'quantity' | <finishConfig key>
   const [openPopup, setOpenPopup] = useState(null)
   
   // Loading add to cart
@@ -102,10 +102,18 @@ const OrderRigid = () => {
 
   const getTotalWidth = () => parseFloat(widthFt) + parseFloat(widthIn) / 12
   const getTotalHeight = () => parseFloat(heightFt) + parseFloat(heightIn) / 12
+
+  // Formats a number of inches for display - whole numbers show with no decimals,
+  // fractional ones (e.g. from a non-whole inch entry) keep up to 2 decimal places.
+  const formatInches = (value) => {
+    const rounded = Math.round((value || 0) * 100) / 100
+    return Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(2)
+  }
+
   const getDimensionString = () => {
-    const w = getTotalWidth()
-    const h = getTotalHeight()
-    return `${w.toFixed(2)}" x ${h.toFixed(2)}"`
+    const totalWidthInches = (parseFloat(widthFt) || 0) * 12 + (parseFloat(widthIn) || 0)
+    const totalHeightInches = (parseFloat(heightFt) || 0) * 12 + (parseFloat(heightIn) || 0)
+    return `${formatInches(totalWidthInches)}" x ${formatInches(totalHeightInches)}"`
   }
 
   // Each active finish config option adds a flat surcharge to the base price:
@@ -313,14 +321,28 @@ const OrderRigid = () => {
           <div className='relative px-6 py-8'>
             <div className='max-w-7xl mx-auto'>
               {/* Header Section */}
-              <div className='flex justify-between items-start mb-8'>
+              <div className='flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4'>
                 <div>
-                  <h1 className='text-5xl font-bold text-gray-900 mb-2'>{getLocalizedField(product.name, language, 'Product')}</h1>
-                  <p className='text-gray-600'>{getLocalizedField(product.name, language, 'Product')} Rigid, {getDimensionString()}</p>
+                  <h1 className='text-3xl font-bold text-gray-900 mb-1'>{getLocalizedField(product.name, language, 'Product')}</h1>
+                  <p className='text-gray-600 text-sm'>{getLocalizedField(product.name, language, 'Product')} Rigid, {getDimensionString()}</p>
                 </div>
-                <div className='text-right'>
-                  <p className='text-5xl font-bold text-green-500'>${getAdjustedBasePrice().toFixed(2)}</p>
-                  <p className='text-gray-600 text-sm'>0 sqft / 24 Hours Production</p>
+
+                <div className='flex items-center gap-4'>
+                  {/* Price */}
+                  <div className='text-right'>
+                    <p className='text-3xl font-bold text-green-500 leading-tight'>${getAdjustedBasePrice().toFixed(2)}</p>
+                    <p className='text-gray-500 text-xs'>0 sqft / 24 Hours Production</p>
+                  </div>
+
+                  {/* Add to Cart - sits beside the price */}
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={addingToCart}
+                    className='flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg transition disabled:opacity-50 whitespace-nowrap'
+                  >
+                    {addingToCart ? 'Adding...' : 'Add to Cart'}
+                    {!addingToCart && <ChevronRight size={16} />}
+                  </button>
                 </div>
               </div>
 
@@ -394,16 +416,16 @@ const OrderRigid = () => {
                   </div>
                 </div>
 
-                {/* Info / Size / Config Boxes Row */}
-                <div className='relative flex flex-wrap gap-4 mt-4'>
+                {/* Info / Size / Config Boxes Row - full width, wraps across the screen */}
+                <div className='relative justify-center flex flex-wrap gap-3 mt-5'>
                   {/* Images - click to open the image library and add another image */}
                   <button
                     type='button'
                     onClick={handleOpenImagePicker}
-                    className='flex-none w-[270px] flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
+                    className='flex-none w-[220px] flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
                   >
                     <span className='text-gray-600 font-medium text-sm tracking-wide'>IMAGES</span>
-                    <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm'>{getTotalUsedCells()}/{MAX_CELLS}</span>
+                    <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm'>{getTotalUsedCells()}/{MAX_CELLS}</span>
                   </button>
 
                   {/* One card per selected image - each has its own change-image button
@@ -411,12 +433,12 @@ const OrderRigid = () => {
                   {images.map((img, idx) => (
                     <div
                       key={idx}
-                      className='flex-none w-[270px] flex items-center gap-3 border border-gray-400 rounded-lg px-3 py-3 bg-white'
+                      className='flex-none w-[220px] flex items-center gap-2 border-2 border-gray-400 px-3 py-2.5 bg-white'
                     >
                       <img
                         src={img.url}
                         alt={`Selected ${idx + 1}`}
-                        className='w-10 h-10 object-cover rounded border border-gray-300 shrink-0'
+                        className='w-9 h-9 object-cover border border-gray-300 shrink-0'
                       />
                       <div className='flex-1 min-w-0'>
                         <div className='flex items-center gap-2'>
@@ -439,18 +461,18 @@ const OrderRigid = () => {
                           <button
                             type='button'
                             onClick={() => handleImageQuantityChange(idx, img.quantity - 1)}
-                            className='p-1 hover:bg-gray-100 rounded transition'
+                            className='p-1 hover:bg-gray-100 transition'
                             aria-label={`Decrease quantity for image ${idx + 1}`}
                           >
                             <Minus size={12} />
                           </button>
-                          <span className='px-2 py-0.5 bg-gray-700 text-white rounded font-bold text-xs min-w-[1.75rem] text-center'>
+                          <span className='px-2 py-0.5 bg-gray-700 text-white font-bold text-xs min-w-[1.75rem] text-center'>
                             {img.quantity}
                           </span>
                           <button
                             type='button'
                             onClick={() => handleImageQuantityChange(idx, img.quantity + 1)}
-                            className='p-1 hover:bg-gray-100 rounded transition'
+                            className='p-1 hover:bg-gray-100 transition'
                             aria-label={`Increase quantity for image ${idx + 1}`}
                           >
                             <Plus size={12} />
@@ -461,19 +483,19 @@ const OrderRigid = () => {
                   ))}
 
                   {/* Size - click to open the dimensions popup */}
-                  <div className='relative flex-none w-[270px]'>
+                  <div className='relative flex-none w-[220px]'>
                     <button
                       type='button'
                       onClick={() => setOpenPopup(openPopup === 'size' ? null : 'size')}
-                      className='w-full flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
+                      className='w-full flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
                     >
                       <span className='text-gray-600 font-medium text-sm tracking-wide'>SIZE</span>
-                      <span className='px-3 py-1 bg-gray-700 text-white rounded font-bold text-sm'>{getDimensionString()}</span>
+                      <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm'>{getDimensionString()}</span>
                     </button>
 
                     {/* Sign size popup */}
                     {openPopup === 'size' && (
-                      <div className='absolute bottom-full left-0 mb-2 w-72 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
+                      <div className='absolute bottom-full left-0 mb-2 w-72 bg-white border border-gray-300 shadow-lg z-10'>
                         <div className='px-4 py-2 border-b border-gray-200 text-center'>
                           <span className='text-sm text-gray-700'>Sign size</span>
                         </div>
@@ -523,6 +545,49 @@ const OrderRigid = () => {
                     )}
                   </div>
 
+                  {/* Quantity - click to open the stepper popup */}
+                  <div className='relative flex-none w-[220px]'>
+                    <button
+                      type='button'
+                      onClick={() => setOpenPopup(openPopup === 'quantity' ? null : 'quantity')}
+                      className='w-full flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
+                    >
+                      <span className='text-gray-600 font-medium text-sm tracking-wide'>QUANTITY</span>
+                      <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm'>{quantity}</span>
+                    </button>
+
+                    {/* Quantity popup */}
+                    {openPopup === 'quantity' && (
+                      <div className='absolute bottom-full left-0 mb-2 w-56 bg-white border-2 border-gray-300 shadow-lg z-10'>
+                        <div className='px-4 py-2 border-b border-gray-200 text-center'>
+                          <span className='text-sm text-gray-700'>Quantity</span>
+                        </div>
+                        <div className='px-4 py-3 flex justify-center'>
+                          <div className='flex items-center gap-2 border border-gray-300 rounded-lg'>
+                            <button
+                              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                              className='p-2 hover:bg-gray-100 transition'
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <input
+                              type='number'
+                              value={quantity}
+                              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                              className='w-14 px-2 py-2 text-center border-none focus:outline-none'
+                            />
+                            <button
+                              onClick={() => setQuantity(quantity + 1)}
+                              className='p-2 hover:bg-gray-100 transition'
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Finish Config boxes */}
                   {product.finishConfig && Object.entries(product.finishConfig).map(([key, value]) => {
                     const label = key.replace(/([A-Z])/g, ' $1').trim().toUpperCase()
@@ -533,7 +598,7 @@ const OrderRigid = () => {
                       return (
                         <div
                           key={key}
-                          className='flex-none w-[270px] flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 bg-gray-50'
+                          className='flex-none w-[220px] flex items-center justify-between border-2 border-gray-200 px-4 py-3 bg-gray-50'
                         >
                           <span className='text-gray-400 font-medium text-sm tracking-wide'>{label}</span>
                           <button
@@ -555,11 +620,11 @@ const OrderRigid = () => {
                     }
 
                     return (
-                      <div key={key} className='relative flex-none w-[270px]'>
+                      <div key={key} className='relative flex-none w-[220px]'>
                         <button
                           type='button'
                           onClick={() => setOpenPopup(openPopup === key ? null : key)}
-                          className='w-full flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 bg-gray-50 hover:bg-gray-100 transition'
+                          className='w-full flex items-center justify-between border-2 border-gray-200 px-4 py-3 bg-gray-50 hover:bg-gray-100 transition'
                         >
                           <span className='text-gray-400 font-medium text-sm tracking-wide'>{label}</span>
                           <span className='px-3 py-1 bg-gray-200 text-gray-500 rounded font-bold text-sm uppercase truncate max-w-[8rem]'>
@@ -587,41 +652,6 @@ const OrderRigid = () => {
                       </div>
                     )
                   })}
-                </div>
-
-                {/* Quantity and Add to Cart */}
-                <div className='bg-white rounded-lg p-6 border border-gray-200 space-y-4 mt-6'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>Quantity</label>
-                    <div className='flex items-center gap-2 border border-gray-300 rounded-lg w-40'>
-                      <button
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className='p-2 hover:bg-gray-100 transition'
-                      >
-                        <Minus size={18} />
-                      </button>
-                      <input
-                        type='number'
-                        value={quantity}
-                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                        className='flex-1 px-3 py-2 text-center border-none focus:outline-none'
-                      />
-                      <button
-                        onClick={() => setQuantity(quantity + 1)}
-                        className='p-2 hover:bg-gray-100 transition'
-                      >
-                        <Plus size={18} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleAddToCart}
-                    disabled={addingToCart}
-                    className='w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-3 px-6 rounded-lg transition disabled:opacity-50'
-                  >
-                    {addingToCart ? 'Adding to cart...' : 'Add to Cart'}
-                  </button>
                 </div>
               </div>
             </div>

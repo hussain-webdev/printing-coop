@@ -30,7 +30,15 @@ const parseJSON = (value) => {
 // cart/order item price is calculated.
 const CONFIG_SURCHARGE = 2.5;
 
-const calculateItemPrice = (product, selectedFinishConfig) => {
+// Banner, adhesive, and flag items store width/height in feet (see OrderBanner.jsx's
+// / OrderAdhesive.jsx's / OrderFlag.jsx's getTotalWidth/getTotalHeight), so this is a
+// genuine $ per square foot rate for those. Other product types (DTF, Rigid, Misc,
+// etc.) store width/height in inches, so this surcharge is limited to
+// AREA_SURCHARGE_CATEGORIES to avoid mispricing those by 144x.
+const AREA_SURCHARGE_PER_SQFT = 1.75;
+const AREA_SURCHARGE_CATEGORIES = ['banner', 'adhesive', 'flag'];
+
+const calculateItemPrice = (product, selectedFinishConfig, width, height) => {
   if (!product?.finishConfig || typeof product.finishConfig !== 'object') {
     return product.basePrice;
   }
@@ -49,7 +57,14 @@ const calculateItemPrice = (product, selectedFinishConfig) => {
     return hasValue ? total + CONFIG_SURCHARGE : total;
   }, 0);
 
-  return product.basePrice + surcharge;
+  let areaSurcharge = 0;
+  const parsedWidth = parseFloat(width);
+  const parsedHeight = parseFloat(height);
+  if (AREA_SURCHARGE_CATEGORIES.includes(product?.category) && parsedWidth > 0 && parsedHeight > 0) {
+    areaSurcharge = parsedWidth * parsedHeight * AREA_SURCHARGE_PER_SQFT;
+  }
+
+  return product.basePrice + surcharge + areaSurcharge;
 };
 
 // Generate unique order number
@@ -438,8 +453,8 @@ const placeOrder = async (req, res) => {
       const itemSize = parseJSON(size) || size || {};
       const itemFinishConfig = parseJSON(selectedFinishConfig) || selectedFinishConfig || {};
 
-      // Calculate item total (base price + finish config surcharges, computed server-side)
-      const itemTotal = calculateItemPrice(product, itemFinishConfig) * itemQuantity;
+      // Calculate item total (base price + finish config surcharges + area surcharge, computed server-side)
+      const itemTotal = calculateItemPrice(product, itemFinishConfig, width, height) * itemQuantity;
       subtotal += itemTotal;
 
       orderItemsData.push({
@@ -910,10 +925,10 @@ const getSellerCart = async (req, res) => {
       },
     });
 
-    // Calculate total cart value (base price + finish config surcharges, computed server-side)
+    // Calculate total cart value (base price + finish config surcharges + area surcharge, computed server-side)
     let cartSubtotal = 0;
     const cartItemsWithTotals = cartItems.map((item) => {
-      const unitPrice = calculateItemPrice(item.product, item.selectedFinishConfig);
+      const unitPrice = calculateItemPrice(item.product, item.selectedFinishConfig, item.width, item.height);
       const itemTotal = unitPrice * item.quantity;
       cartSubtotal += itemTotal;
       return {
@@ -996,8 +1011,8 @@ const buildOrderItemsFromDB = async (wholesaleSellerId, orderItems) => {
     const itemSize = parseJSON(size) || size || {};
     const itemFinishConfig = parseJSON(selectedFinishConfig) || selectedFinishConfig || {};
 
-    // Recompute price from the DB (base price + finish config surcharges), never trust the client
-    const itemTotal = calculateItemPrice(product, itemFinishConfig) * itemQuantity;
+    // Recompute price from the DB (base price + finish config surcharges + area surcharge), never trust the client
+    const itemTotal = calculateItemPrice(product, itemFinishConfig, width, height) * itemQuantity;
     subtotal += itemTotal;
 
     orderItemsData.push({

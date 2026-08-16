@@ -41,7 +41,7 @@ const OrderDTF = () => {
   const [width, setWidth] = useState(22)
   const [height, setHeight] = useState(0)
 
-  // Which popup is currently open: null | 'size'
+  // Which popup is currently open: null | 'size' | 'quantity'
   const [openPopup, setOpenPopup] = useState(null)
 
   // Quantity state
@@ -219,19 +219,33 @@ const OrderDTF = () => {
           <div className='relative px-6 py-8'>
             <div className='max-w-7xl mx-auto'>
               {/* Header Section */}
-              <div className='flex justify-between items-start mb-8'>
+              <div className='flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4'>
                 <div>
-                  <h1 className='text-5xl font-bold text-gray-900 mb-2'>{getLocalizedField(product.name, language, 'Product')}</h1>
-                  <p className='text-gray-600'>DTF Transfer 22", {width || 0}" x {height || 0}"</p>
+                  <h1 className='text-3xl font-bold text-gray-900 mb-1'>{getLocalizedField(product.name, language, 'Product')}</h1>
+                  <p className='text-gray-600 text-sm'>DTF Transfer 22", {width || 0}" x {height || 0}"</p>
                 </div>
-                <div className='text-right'>
-                  <p className='text-5xl font-bold text-green-500'>${product.basePrice.toFixed(2)}</p>
-                  <p className='text-gray-600 text-sm'>{width || 0} linear inch / 24 Hours Production</p>
+
+                <div className='flex items-center gap-4'>
+                  {/* Price */}
+                  <div className='text-right'>
+                    <p className='text-3xl font-bold text-green-500 leading-tight'>${product.basePrice.toFixed(2)}</p>
+                    <p className='text-gray-500 text-xs'>{width || 0} linear inch / 24 Hours Production</p>
+                  </div>
+
+                  {/* Add to Cart - sits beside the price */}
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={addingToCart}
+                    className='flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white font-bold text-sm py-2.5 px-5 rounded-lg transition disabled:opacity-50 whitespace-nowrap'
+                  >
+                    {addingToCart ? 'Adding...' : 'Add to Cart'}
+                    {!addingToCart && <ChevronRight size={16} />}
+                  </button>
                 </div>
               </div>
 
               {/* Main Content - single centered column */}
-              <div className='max-w-6xl mx-auto'>
+              <div className='max-w-3xl mx-auto'>
                 {/* Sheet Line Visualization (click anywhere to select the transfer image) */}
                 <div className='relative py-6'>
                   {/* Top row: signs count / TOP OF SHEET / LEFT-RIGHT edge labels */}
@@ -290,34 +304,34 @@ const OrderDTF = () => {
                     )}
                 </div>
 
-                {/* Images + Size Boxes */}
-                <div className='flex justify-center gap-4'>
+                {/* Info / Size Boxes Row - full width, wraps across the screen */}
+                <div className='relative justify-center flex flex-wrap gap-3 mt-5'>
                   {/* Images - click to open the image library and select/change the artwork */}
                   <button
                     type='button'
                     onClick={() => setShowImageUploadModal(true)}
-                    className='w-64 flex items-center justify-between border border-gray-400 rounded-lg px-4 py-3 bg-white hover:bg-gray-50 transition'
+                    className='flex-none w-[220px] flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
                   >
-                    <span className='text-gray-400 font-medium text-sm tracking-wide'>IMAGES</span>
-                    <span className='px-3 py-1 bg-gray-500 text-white rounded font-bold text-sm'>{imagePreview ? '1' : '0'}</span>
+                    <span className='text-gray-600 font-medium text-sm tracking-wide'>IMAGES</span>
+                    <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm'>{imagePreview ? '1' : '0'}</span>
                   </button>
 
-                  {/* Size - click to open editable width/height inputs */}
-                  <div className='relative w-64'>
+                  {/* Size - click to open the dimensions popup */}
+                  <div className='relative flex-none w-[220px]'>
                     <button
                       type='button'
                       onClick={() => setOpenPopup(openPopup === 'size' ? null : 'size')}
-                      className='w-full flex items-center justify-between border border-green-600 rounded-lg px-4 py-3 bg-white hover:bg-green-50 transition'
+                      className='w-full flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
                     >
-                      <span className='text-green-600 font-medium text-sm tracking-wide'>SIZE</span>
-                      <span className='px-3 py-1 bg-green-600 text-white rounded font-bold text-sm'>
+                      <span className='text-gray-600 font-medium text-sm tracking-wide'>SIZE</span>
+                      <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm'>
                         {width || 0}" x {height || 0}"
                       </span>
                     </button>
 
                     {/* Editable size popup */}
                     {openPopup === 'size' && (
-                      <div className='absolute bottom-full left-0 mb-2 w-64 bg-white border border-gray-300 rounded-md shadow-lg z-10'>
+                      <div className='absolute bottom-full left-0 mb-2 w-72 bg-white border border-gray-300 shadow-lg z-10'>
                         <div className='px-4 py-2 border-b border-gray-200 text-center'>
                           <span className='text-sm text-gray-700'>Size (inches)</span>
                         </div>
@@ -350,41 +364,49 @@ const OrderDTF = () => {
                       </div>
                     )}
                   </div>
-                </div>
 
-                {/* Quantity and Add to Cart */}
-                <div className='max-w-md mx-auto bg-white rounded-lg p-6 border border-gray-200 space-y-4 mt-6'>
-                  <div>
-                    <label className='block text-sm font-medium text-gray-700 mb-2'>Quantity</label>
-                    <div className='flex items-center gap-2 border border-gray-300 rounded-lg w-40'>
-                      <button
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className='p-2 hover:bg-gray-100 transition'
-                      >
-                        <Minus size={18} />
-                      </button>
-                      <input
-                        type='number'
-                        value={quantity}
-                        onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                        className='flex-1 px-3 py-2 text-center border-none focus:outline-none'
-                      />
-                      <button
-                        onClick={() => setQuantity(quantity + 1)}
-                        className='p-2 hover:bg-gray-100 transition'
-                      >
-                        <Plus size={18} />
-                      </button>
-                    </div>
+                  {/* Quantity - click to open the stepper popup */}
+                  <div className='relative flex-none w-[220px]'>
+                    <button
+                      type='button'
+                      onClick={() => setOpenPopup(openPopup === 'quantity' ? null : 'quantity')}
+                      className='w-full flex items-center justify-between border-2 border-gray-400 px-4 py-3 bg-white hover:bg-gray-50 transition'
+                    >
+                      <span className='text-gray-600 font-medium text-sm tracking-wide'>QUANTITY</span>
+                      <span className='px-3 py-1 bg-gray-700 text-white font-bold text-sm'>{quantity}</span>
+                    </button>
+
+                    {/* Quantity popup */}
+                    {openPopup === 'quantity' && (
+                      <div className='absolute bottom-full left-0 mb-2 w-56 bg-white border-2 border-gray-300 shadow-lg z-10'>
+                        <div className='px-4 py-2 border-b border-gray-200 text-center'>
+                          <span className='text-sm text-gray-700'>Quantity</span>
+                        </div>
+                        <div className='px-4 py-3 flex justify-center'>
+                          <div className='flex items-center gap-2 border border-gray-300 rounded-lg'>
+                            <button
+                              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                              className='p-2 hover:bg-gray-100 transition'
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <input
+                              type='number'
+                              value={quantity}
+                              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                              className='w-14 px-2 py-2 text-center border-none focus:outline-none'
+                            />
+                            <button
+                              onClick={() => setQuantity(quantity + 1)}
+                              className='p-2 hover:bg-gray-100 transition'
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-
-                  <button
-                    onClick={handleAddToCart}
-                    disabled={addingToCart}
-                    className='w-full bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-3 px-6 rounded-lg transition disabled:opacity-50'
-                  >
-                    {addingToCart ? 'Adding to cart...' : 'Add to Cart'}
-                  </button>
                 </div>
               </div>
             </div>

@@ -28,7 +28,7 @@ const DashboardNavbar = () => {
     <div className='fixed w-full z-40'>
         {/* Top Navy Bar */}
         <div className='bg-[#0f2761] h-8 w-full' >
-          <LanguageSwitcher />
+          {/* <LanguageSwitcher /> */}
         </div>
 
         {/* Desktop Navigation */}
@@ -41,7 +41,7 @@ const DashboardNavbar = () => {
                 {categories.map((cat) => (
                   <div key={cat.route} className='flex flex-col items-center cursor-pointer group' onClick={() => navigate(cat.route)}>
                     <div className={`p-2 rounded ${isActive(cat.route) ? 'bg-[#ffbb0f]' : ''}`}>
-                      <img src={cat.icon} alt={cat.label} className='w-[30px] h-[30px] object-contain' />
+                      <img src={cat.icon} alt={cat.label} className='w-[24px] h-[24px] object-contain' />
                     </div>
                     <p className='text-[11px] pt-1 font-medium text-gray-600 text-center leading-tight whitespace-nowrap'>{cat.label}</p>
                   </div>
@@ -51,13 +51,14 @@ const DashboardNavbar = () => {
             <div className='flex gap-5 items-center'>
                 <button
                   onClick={() => navigate('/product-listing')}
-                  className='flex items-center gap-2 bg-[#0b1f4d] hover:bg-[#0e2a63] transition-colors text-white px-5 py-2.5 rounded-md'
+                  className='flex items-center gap-1 bg-[#0b1f4d] hover:bg-[#0e2a63] transition-colors text-white px-3 py-2.5 rounded-md'
                 >
                     <ShoppingBasket size={20} strokeWidth={1.5} />
-                    <span className='text-sm font-semibold tracking-wide'>{t('nav.productListing').toUpperCase()}</span>
+                    <span className='text-xs font-semibold tracking-wide'>{t('nav.productListing').toUpperCase()}</span>
                 </button>
 
                 <div className='w-px h-10 bg-gray-200' />
+                <LanguageSwitcher />
 
                 <img className='w-8 h-6 object-cover rounded-sm' src="/us.svg" alt="" />
 

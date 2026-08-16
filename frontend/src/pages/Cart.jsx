@@ -19,6 +19,19 @@ const getLocalizedField = (field, language, fallback) => {
   return field
 }
 
+// Most order pages (Banner, Adhesive, Flag, Magnet, Rigid) use a feet+inches size
+// picker and store width/height in feet on the cart item. Only DTF and Misc use a
+// plain inches input, so their stored width/height is already inches - everything
+// else needs the feet -> inches conversion below.
+const INCHES_BASED_CATEGORIES = ['apparel', 'misc']
+
+// Formats a number of inches for display - whole numbers show with no decimals,
+// fractional ones (e.g. from a non-whole inch entry) keep up to 2 decimal places.
+const formatInches = (value) => {
+  const rounded = Math.round((value || 0) * 100) / 100
+  return Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(2)
+}
+
 const Cart = () => {
   const { t, i18n } = useTranslation()
   const language = i18n.language === 'fr' ? 'fr' : 'en'
@@ -168,9 +181,12 @@ const Cart = () => {
   }
 
   const formatSizeDisplay = (item) => {
-    // If width and height exist, show dimensions (rounded to 2 decimal places)
+    // If width and height exist, show dimensions converted to inches
     if (item.width && item.height) {
-      return `${Number(item.width).toFixed(2)}" x ${Number(item.height).toFixed(2)}"`
+      const isFeetBased = !INCHES_BASED_CATEGORIES.includes(item.product?.category)
+      const widthInches = isFeetBased ? Number(item.width) * 12 : Number(item.width)
+      const heightInches = isFeetBased ? Number(item.height) * 12 : Number(item.height)
+      return `${formatInches(widthInches)}" x ${formatInches(heightInches)}"`
     }
 
     // Otherwise, if size exists, show size array
